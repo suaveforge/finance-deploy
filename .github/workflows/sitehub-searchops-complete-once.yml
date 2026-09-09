@@ -1,0 +1,24 @@
+name: SiteHub SearchOps complete p07 once
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sitehub-searchops-complete-once.yml']
+permissions: {contents: write}
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply complete SiteHub contract
+        env:
+          PROJECT_ID: p07
+          PUBLIC_URL: https://finance.suaveforge.com/
+          PROJECT_NAME: SuaveForge FINANCE
+          DESCRIPTION: SuaveForge FINANCE는 통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 주식 거래 운영 콘솔입니다.
+        run: |
+          set -Eeuo pipefail
+          curl -fsSL https://raw.githubusercontent.com/suaveforge/sitehub-deploy/8289fa3e45143954bda73514ad6fd3667d90891d/searchops/static-complete-adapter.py -o /tmp/sitehub.py
+          python /tmp/sitehub.py
+          git config user.name 'SuaveForge SiteHub'; git config user.email '53187583+programmer119@users.noreply.github.com'
+          git add index.html sitemap.xml robots.txt
+          if ! git diff --cached --quiet; then git commit -m 'Apply SiteHub SearchOps p07'; git push; fi
