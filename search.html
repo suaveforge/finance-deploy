@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta name="description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<link rel="canonical" href="https://finance.suaveforge.com/search.html">
+<meta property="og:title" content="종목 검색 · SuaveForge FINANCE">
+<meta property="og:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta property="og:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<meta property="og:url" content="https://finance.suaveforge.com/search.html">
+<meta property="og:site_name" content="SuaveForge FINANCE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="종목 검색 · SuaveForge FINANCE">
+<meta name="twitter:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta name="twitter:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<script async src="https://sitehub.suaveforge.com/analytics-loader.js" data-sitehub-project="p07"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>종목 검색</title>
+<script src="auth.js"></script>
+<script src="nav.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 20px; }
+h1 { color: #fff; font-size: 22px; margin-bottom: 14px; }
+
+.toolbar {
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap; margin-bottom: 18px;
+}
+button {
+    background: #2a2a3e; color: #ccc;
+    border: 1px solid #444; padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; font-size: 13px;
+    touch-action: manipulation;
+}
+button:hover { background: #3a3a5e; color: #fff; }
+button:active { opacity: 0.75; }
+button.active { background: #3a3a6e; color: #7eb8f7; border-color: #7eb8f7; }
+.btn-buy  { background: #3a1a1a; border-color: #883333; color: #ff9999; }
+.btn-buy:hover  { background: #5a2020; color: #ffbbbb; }
+
+/* ── 검색 박스 ── */
+.search-wrap {
+    position: relative; width: 260px;
+}
+.search-wrap input[type="text"] {
+    width: 100%;
+    background: #1a1a2e; color: #e0e0e0;
+    border: 1px solid #444; padding: 8px 12px;
+    border-radius: 6px; font-size: 14px;
+}
+.search-wrap input[type="text"]:focus { outline: none; border-color: #7eb8f7; }
+
+.search-dropdown {
+    display: none;
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: #1a1a2e; border: 1px solid #444;
+    border-radius: 6px; z-index: 50;
+    max-height: 280px; overflow-y: auto;
+}
+.search-dropdown.open { display: block; }
+.search-item {
+    padding: 9px 12px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px; font-size: 13px;
+}
+.search-item:hover { background: #2a2a4e; }
+.search-item .s-name { color: #fff; font-weight: bold; }
+.search-item .s-code { color: #666; font-size: 12px; white-space: nowrap; }
+.search-empty { padding: 12px; color: #555; font-size: 13px; text-align: center; }
+
+/* ── 차트 영역 ── */
+.chart-container { background: #1a1a2e; border-radius: 10px; padding: 16px; }
+.chart-header {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+}
+.chart-title { font-size: 16px; font-weight: bold; color: #fff; }
+.chart-title .ct-code { color: #666; font-size: 13px; font-weight: normal; margin-left: 8px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #888; }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-line { width: 18px; height: 3px; border-radius: 1px; }
+.legend-tri-up   { width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:9px solid; }
+.legend-tri-down { width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:9px solid; }
+
+.chart-wrapper { position: relative; height: 360px; }
+.vol-wrapper   { position: relative; height: 130px; margin-top: 4px; }
+canvas { cursor: grab; }
+canvas:active { cursor: grabbing; }
+
+.status-msg {
+    height: 360px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    color: #888; font-size: 15px;
+}
+.spinner {
+    width: 36px; height: 36px; border: 3px solid #333;
+    border-top-color: #7eb8f7; border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 모달 ── */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 100;
+    align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+    background: #1a1a2e; border: 1px solid #444;
+    border-radius: 12px; padding: 24px;
+    width: 320px; max-width: calc(100vw - 32px);
+}
+.modal-title { font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 16px; }
+.modal-info  { font-size: 14px; color: #999; line-height: 1.9; margin-bottom: 18px; }
+.modal-info b { color: #fff; }
+.modal-input {
+    width: 100%; background: #0f0f1a;
+    border: 1px solid #444; border-radius: 6px;
+    color: #fff; padding: 12px; font-size: 18px;
+    margin-bottom: 12px; outline: none;
+}
+.modal-input:focus { border-color: #7eb8f7; }
+.modal-btns { display: flex; gap: 10px; }
+.modal-btns button { flex: 1; padding: 12px; font-size: 15px; font-weight: bold; }
+
+/* ── 토스트 ── */
+#toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #2a2a3e; border: 1px solid #555;
+    color: #fff; padding: 12px 22px; border-radius: 8px;
+    font-size: 14px; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 200;
+    white-space: nowrap; max-width: calc(100vw - 32px); text-align: center;
+}
+#toast.show     { opacity: 1; }
+#toast.show.ok  { border-color: #44cc44; color: #88ee88; }
+#toast.show.err { border-color: #cc4444; color: #ff9999; }
+
+@media (max-width: 600px) {
+    body { padding: 12px; }
+    .chart-wrapper { height: 260px; }
+    .vol-wrapper   { height: 100px; }
+    .search-wrap { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+
+<h1>종목 검색</h1>
+
+<div class="toolbar">
+    <div class="search-wrap">
+        <input type="text" id="search-input" placeholder="종목명 또는 코드 입력" autocomplete="off"
+               oninput="onSearchInput()" onkeydown="onSearchKey(event)">
+        <div class="search-dropdown" id="search-dropdown"></div>
+    </div>
+    <button id="btn-daily"  class="active" onclick="setTab('daily')">일봉</button>
+    <button id="btn-minute"              onclick="setTab('minute')">분봉</button>
+    <button id="btn-buy" class="btn-buy" style="display:none" onclick="openBuyModal()">매수</button>
+</div>
+
+<div class="chart-container">
+    <div class="chart-header">
+        <div class="chart-title" id="chart-title">
+            종목을 검색하세요
+        </div>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-line" style="background:#26a69a;height:8px;width:8px;border-radius:1px"></div>양봉</div>
+            <div class="legend-item"><div class="legend-line" style="background:#ef5350;height:8px;width:8px;border-radius:1px"></div>음봉</div>
+            <div class="legend-item"><div class="legend-line" style="background:#cc88ff"></div>MA단기</div>
+            <div class="legend-item"><div class="legend-line" style="background:#44cc88"></div>MA장기</div>
+            <div class="legend-item"><div class="legend-tri-up"   style="border-bottom-color:#e05555"></div>매수신호</div>
+            <div class="legend-item"><div class="legend-tri-down" style="border-top-color:#5588e0"></div>매도신호</div>
+        </div>
+    </div>
+    <div id="status-msg" class="status-msg" style="display:none"></div>
+    <div class="chart-wrapper" id="chart-wrapper" style="display:none">
+        <canvas id="myChart"></canvas>
+    </div>
+    <div class="vol-wrapper" id="vol-wrapper" style="display:none">
+        <canvas id="volChart"></canvas>
+    </div>
+    <div class="status-msg" id="empty-msg">종목명이나 코드를 입력하고 선택하세요</div>
+</div>
+
+<!-- 매수 모달 -->
+<div class="modal-overlay" id="modal">
+    <div class="modal-box">
+        <div class="modal-title">매수 주문</div>
+        <div class="modal-info" id="m-info"></div>
+        <input class="modal-input" id="m-qty"   type="number" min="1"   placeholder="수량 입력"              inputmode="numeric">
+        <input class="modal-input" id="m-price" type="number" min="0"   placeholder="지정가 (비우면 시장가)" inputmode="numeric">
+        <div class="modal-btns">
+            <button class="btn-buy" id="m-confirm">매수 실행</button>
+            <button onclick="closeModal()">취소</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+Chart.Tooltip.positioners.topFixed = function(_els, _pos) {
+    const ca = this.chart.chartArea;
+    return { x: ca.left, y: ca.top - 20, xAlign: 'left', yAlign: 'top' };
+};
+
+const SERVER = localStorage.getItem('trade_server') || 'https://api-finance.suaveforge.com:18465/api';
+const DATA_SERVER = localStorage.getItem('data_server') || 'https://finance.suaveforge.com/data';
+let myChart     = null;
+let volChart    = null;
+let currentData = [];
+let currentTab  = 'daily';
+let currentCode = '';
+let currentName = '';
+let pollTimer   = null;
+let searchTimer = null;
+let dropItems   = [];
+let dropIndex   = -1;
+
+// ── 토스트 ──────────────────────────────────────────────
+function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ── 매수 모달 ────────────────────────────────────────────
+async function openBuyModal() {
+    if (!currentCode) return;
+    document.getElementById('m-qty').value   = '';
+    document.getElementById('m-price').value = '';
+    document.getElementById('m-info').innerHTML = `종목: <b>${currentName} (${currentCode})</b>`;
+    document.getElementById('modal').classList.add('show');
+    setTimeout(() => document.getElementById('m-qty').focus(), 50);
+
+    try {
+        const [rp, rq] = await Promise.all([
+            fetch(`${SERVER}/price?code=${currentCode}`),
+            fetch(`${SERVER}/avail_buy?code=${currentCode}`),
+        ]);
+        const jp = await rp.json();
+        const jq = await rq.json();
+        if (jp.price)                   document.getElementById('m-price').value = jp.price;
+        if (jq.avail_qty !== undefined)  document.getElementById('m-qty').value   = jq.avail_qty;
+    } catch {}
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+}
+
+document.getElementById('m-confirm').onclick = async () => {
+    const qty   = document.getElementById('m-qty').value.trim();
+    const price = document.getElementById('m-price').value.trim();
+    if (!qty || Number(qty) <= 0) { toast('수량을 입력하세요', 'err'); return; }
+
+    const isLimit = price && Number(price) > 0;
+    const body    = isLimit ? { code: currentCode, qty, price } : { code: currentCode, qty };
+    closeModal();
+
+    try {
+        const r = await fetch(SERVER + '/buy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const j = await r.json();
+        if (j.error) {
+            toast(j.error, 'err');
+        } else if (j.ok) {
+            const label = isLimit ? '지정가' : '시장가';
+            toast(`${currentName} ${Number(qty).toLocaleString('ko-KR')}주 매수(${label}) 완료 (${Number(j.price).toLocaleString('ko-KR')}원)`, 'ok');
+        } else {
+            toast(`주문 실패 (rt_cd: ${j.rt_cd})`, 'err');
+        }
+    } catch { toast('서버 연결 오류', 'err'); }
+};
+
+document.getElementById('modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── 탭 ──────────────────────────────────────────────────
+function setTab(tab) {
+    currentTab = tab;
+    document.getElementById('btn-daily').classList.toggle('active',  tab === 'daily');
+    document.getElementById('btn-minute').classList.toggle('active', tab === 'minute');
+    if (currentCode) showChart();
+}
+
+
+// ── 검색 드롭다운 ────────────────────────────────────────
+function onSearchInput() {
+    clearTimeout(searchTimer);
+    const q = document.getElementById('search-input').value.trim();
+    if (q.length < 1) { closeDropdown(); return; }
+    searchTimer = setTimeout(() => fetchSearch(q), 200);
+}
+
+async function fetchSearch(q) {
+    try {
+        const res  = await fetch(`${SERVER}/search?q=${encodeURIComponent(q)}`);
+        const list = await res.json();
+        renderDropdown(list);
+    } catch {
+        closeDropdown();
+    }
+}
+
+function renderDropdown(list) {
+    const dd = document.getElementById('search-dropdown');
+    dropItems = list;
+    dropIndex = -1;
+
+    if (!list || list.length === 0) {
+        dd.innerHTML = '<div class="search-empty">검색 결과 없음</div>';
+        dd.classList.add('open');
+        return;
+    }
+
+    dd.innerHTML = list.map((item, i) =>
+        `<div class="search-item" data-i="${i}"
+              onmousedown="selectItem(${i})"
+              onmouseover="highlightItem(${i})">
+            <span class="s-name">${item.name}</span>
+            <span class="s-code">${item.code}</span>
+        </div>`
+    ).join('');
+    dd.classList.add('open');
+}
+
+function highlightItem(i) {
+    dropIndex = i;
+    document.querySelectorAll('.search-item').forEach((el, j) => {
+        el.style.background = j === i ? '#2a2a4e' : '';
+    });
+}
+
+function onSearchKey(e) {
+    const dd = document.getElementById('search-dropdown');
+    if (!dd.classList.contains('open')) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        highlightItem(Math.min(dropIndex + 1, dropItems.length - 1));
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        highlightItem(Math.max(dropIndex - 1, 0));
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (dropIndex >= 0 && dropItems[dropIndex]) selectItem(dropIndex);
+    } else if (e.key === 'Escape') {
+        closeDropdown();
+    }
+}
+
+function selectItem(i) {
+    const item = dropItems[i];
+    if (!item) return;
+    closeDropdown();
+    document.getElementById('search-input').value = item.name;
+    fetchStock(item.code, item.name);
+}
+
+function closeDropdown() {
+    document.getElementById('search-dropdown').classList.remove('open');
+    dropItems = [];
+    dropIndex = -1;
+}
+
+document.addEventListener('click', e => {
+    if (!document.querySelector('.search-wrap').contains(e.target)) closeDropdown();
+});
+
+// ── 데이터 수집 ──────────────────────────────────────────
+async function fetchStock(code, name) {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    currentCode = code;
+    currentName = name;
+    setChartTitle(name, code);
+    showStatus('<div class="spinner"></div><span>데이터 요청 중...</span>');
+
+    try {
+        const res  = await fetch(`${SERVER}/fetch?code=${code}`);
+        const json = await res.json();
+
+        if (json.status === 'collecting') {
+            const msg = json.existing
+                ? '데이터 업데이트 중...'
+                : '데이터 수집 중... (수 분 소요)';
+            showStatus(`<div class="spinner"></div><span>${msg}</span>`);
+            startPolling(code);
+        } else {
+            showStatus(`<span>오류: ${json.error || json.status}</span>`);
+        }
+    } catch {
+        showStatus(`<span>서버 연결 실패 (${SERVER})</span>`);
+    }
+}
+
+function startPolling(code) {
+    pollTimer = setInterval(async () => {
+        try {
+            const res  = await fetch(`${SERVER}/fetch_status?code=${code}`);
+            const json = await res.json();
+            if (json.status === 'ready') {
+                clearInterval(pollTimer); pollTimer = null;
+                showChart();
+            }
+        } catch {}
+    }, 5000);
+}
+
+// ── 차트 ────────────────────────────────────────────────
+function setChartTitle(name, code) {
+    document.getElementById('chart-title').innerHTML =
+        `${name}<span class="ct-code">${code}</span>`;
+}
+
+function showStatus(html) {
+    document.getElementById('empty-msg').style.display    = 'none';
+    document.getElementById('chart-wrapper').style.display = 'none';
+    document.getElementById('vol-wrapper').style.display   = 'none';
+    const el = document.getElementById('status-msg');
+    el.style.display = 'flex';
+    el.innerHTML = html;
+}
+
+function fmtTs(ts) {
+    if (ts.length === 8) return ts.slice(0,4) + '/' + ts.slice(4,6) + '/' + ts.slice(6,8);
+    const mm = ts.slice(4,6), dd = ts.slice(6,8);
+    const hh = ts.slice(9,11), mn = ts.slice(11,13);
+    return `${mm}/${dd} ${hh}:${mn}`;
+}
+
+async function loadCSV(path) {
+    const res   = await fetch(path + '?t=' + Date.now());
+    const text  = await res.text();
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim());
+    const strCols = new Set(['timestamp', 'signal', 'vol_signal', 'action', 'prdy_vrss_sign']);
+    return lines.slice(1).map(line => {
+        const vals = line.split(',');
+        return headers.reduce((obj, h, i) => {
+            const raw = vals[i]?.trim() ?? '';
+            obj[h] = strCols.has(h) ? raw : (parseFloat(raw) || 0);
+            return obj;
+        }, {});
+    }).filter(d => d.ma_long !== 0 && d.ma_short !== 0);
+}
+
+function showChart() {
+    const path = currentTab === 'daily'
+        ? `${DATA_SERVER}/daily/${currentCode}.csv`
+        : `${DATA_SERVER}/minute/${currentCode}.csv`;
+
+    loadCSV(path).then(data => {
+        if (!data || data.length === 0) {
+            showStatus('<span>데이터가 없습니다.</span>');
+            return;
+        }
+        if (currentTab === 'minute') data = data.slice(-1000);
+        currentData = data;
+
+        document.getElementById('empty-msg').style.display    = 'none';
+        document.getElementById('status-msg').style.display   = 'none';
+        document.getElementById('chart-wrapper').style.display = 'block';
+        document.getElementById('vol-wrapper').style.display   = 'block';
+        document.getElementById('btn-buy').style.display       = '';
+
+        const labels      = data.map(d => fmtTs(d.timestamp));
+        const maShort     = data.map(d => d.ma_short);
+        const maLong      = data.map(d => d.ma_long);
+        const vols        = data.map(d => d.vol);
+        const volSmaShort = data.map(d => d.vol_sma_short);
+        const volSmaLong  = data.map(d => d.vol_sma_long);
+        const priceBuy    = data.filter(d => d.signal === 'BUY') .map(d => ({ x: fmtTs(d.timestamp), y: d.price }));
+        const priceSell   = data.filter(d => d.signal === 'SELL').map(d => ({ x: fmtTs(d.timestamp), y: d.price }));
+
+        if (myChart)  { myChart.destroy();  myChart  = null; }
+        if (volChart) { volChart.destroy(); volChart = null; }
+
+        let syncing = false;
+        const syncZoom = (source) => {
+            if (syncing) return;
+            syncing = true;
+            const { min, max } = source.scales.x;
+            const target = source === myChart ? volChart : myChart;
+            if (target) target.zoomScale('x', { min, max }, 'none');
+            syncing = false;
+        };
+        const zoomOpts = () => ({
+            zoom:   { wheel:{enabled:true, speed:0.05}, pinch:{enabled:true}, mode:'x', onZoom:({chart})=>syncZoom(chart) },
+            pan:    { enabled:true, mode:'x', onPan:({chart})=>syncZoom(chart) },
+            limits: { x:{ minRange:40 } },
+        });
+
+        // 캔들 커스텀 플러그인 — dataset[0](_range)의 바 위치를 기준으로 직접 그림
+        const candlestickPlugin = {
+            id: 'candlestick',
+            afterDatasetsDraw(chart) {
+                const meta = chart.getDatasetMeta(0);
+                if (!meta.data.length) return;
+                const ctx    = chart.ctx;
+                const scaleY = chart.scales.y;
+                const bars   = meta.data;
+                const barW   = bars.length > 1
+                    ? Math.max(1, Math.abs(bars[1].x - bars[0].x) * 0.6)
+                    : 6;
+                const { left, right, top, bottom } = chart.chartArea;
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(left, top, right - left, bottom - top);
+                ctx.clip();
+                ctx.lineWidth = 1;
+                bars.forEach((bar, i) => {
+                    const d = currentData[i];
+                    if (!d) return;
+                    const x     = bar.x;
+                    const isUp  = d.price >= d.open;
+                    const color = isUp ? '#26a69a' : '#ef5350';
+                    ctx.strokeStyle = color;
+                    ctx.fillStyle   = color;
+                    const yH = scaleY.getPixelForValue(d.high);
+                    const yL = scaleY.getPixelForValue(d.low);
+                    const yO = scaleY.getPixelForValue(d.open);
+                    const yC = scaleY.getPixelForValue(d.price);
+                    ctx.beginPath(); ctx.moveTo(x, yH); ctx.lineTo(x, yL); ctx.stroke();
+                    ctx.fillRect(x - barW / 2, Math.min(yO, yC), barW, Math.max(1, Math.abs(yC - yO)));
+                });
+                ctx.restore();
+            }
+        };
+
+        // ── 가격 차트 ──
+        myChart = new Chart(document.getElementById('myChart'), {
+            plugins: [candlestickPlugin],
+            data: {
+                labels,
+                datasets: [
+                    // dataset[0]: 투명 floating bar — y축 스케일 확보 + 툴팁 트리거 용도
+                    { type:'bar', label:'_range', data:data.map(d => [d.low, d.high]),
+                      backgroundColor:'transparent', borderWidth:0, barPercentage:0.7 },
+                    { type:'line',    label:'MA단기',   data:maShort,   borderColor:'#cc88ff', borderWidth:1,   pointRadius:0 },
+                    { type:'line',    label:'MA장기',   data:maLong,    borderColor:'#44cc88', borderWidth:1,   pointRadius:0 },
+                    { type:'scatter', label:'매수신호', data:priceBuy,  pointStyle:'triangle', pointRadius:7, backgroundColor:'#e05555' },
+                    { type:'scatter', label:'매도신호', data:priceSell, pointStyle:'triangle', rotation:180,  pointRadius:7, backgroundColor:'#5588e0' },
+                ]
+            },
+            options: {
+                animation: false, responsive: true, maintainAspectRatio: false,
+                interaction: { mode:'index', intersect:false },
+                scales: {
+                    x: { grid:{color:'#1e1e30'}, ticks:{color:'#666', maxTicksLimit:14, maxRotation:0}, min: labels[Math.max(0, labels.length - 40)], max: labels[labels.length - 1] },
+                    y: { beginAtZero:false, grid:{color:'#1e1e30'}, ticks:{color:'#aaa'} },
+                },
+                plugins: {
+                    legend: { display:false },
+                    tooltip: {
+                        position: 'topFixed',
+                        padding: 5,
+                        backgroundColor: 'transparent',
+                        boxWidth: 0, boxHeight: 0, boxPadding: 0,
+                        filter: c => c.datasetIndex === 0,
+                        callbacks: {
+                            title: c => {
+                                const d = currentData[c[0]?.dataIndex];
+                                if (!d) return c[0]?.label ?? '';
+                                let t = `${c[0]?.label ?? ''}  ${d.price?.toLocaleString('ko-KR')}`;
+                                if (d.prdy_vrss) {
+                                    const pfx      = ['1','2'].includes(d.prdy_vrss_sign) ? '+' : ['4','5'].includes(d.prdy_vrss_sign) ? '-' : '';
+                                    const absVrss  = Math.abs(d.prdy_vrss);
+                                    const prevPrice = d.price - d.prdy_vrss;
+                                    const pct      = prevPrice !== 0 ? (absVrss / prevPrice * 100).toFixed(2) : '0.00';
+                                    t += `  ${pfx}${absVrss.toLocaleString('ko-KR')} (${pfx}${pct}%)`;
+                                }
+                                return t;
+                            },
+                            label: () => '',
+                        },
+                    },
+                    zoom: zoomOpts(),
+                },
+            },
+        });
+
+        // ── 거래량 차트 ──
+        const volMax = (() => {
+            const s = [...vols].filter(v => v > 0).sort((a,b) => a - b);
+            return (s[Math.floor(s.length * 0.95)] || 1) * 2;
+        })();
+
+        volChart = new Chart(document.getElementById('volChart'), {
+            data: {
+                labels,
+                datasets: [
+                    { type:'bar',  label:'거래량',      data:vols,        backgroundColor:'rgba(100,100,130,0.4)', barPercentage:0.8 },
+                    { type:'line', label:'거래량MA단기', data:volSmaShort, borderColor:'#ffcc44', borderWidth:1, pointRadius:0 },
+                    { type:'line', label:'거래량MA장기', data:volSmaLong,  borderColor:'#ff6644', borderWidth:1, pointRadius:0 },
+                ]
+            },
+            options: {
+                animation: false, responsive: true, maintainAspectRatio: false,
+                interaction: { mode:'index', intersect:false },
+                scales: {
+                    x: { grid:{color:'#1e1e30'}, ticks:{color:'#666', maxTicksLimit:14, maxRotation:0} },
+                    y: { beginAtZero:true, suggestedMax:volMax, grid:{color:'#1e1e30'}, ticks:{color:'#666'} },
+                },
+                plugins: {
+                    legend: { display:false },
+                    tooltip: {
+                        position: 'topFixed',
+                        padding: 5,
+                        backgroundColor: 'transparent',
+                        boxWidth: 0, boxHeight: 0, boxPadding: 0,
+                        callbacks: {
+                            title: c => {
+                                const d = currentData[c[0]?.dataIndex];
+                                return `${c[0]?.label ?? ''}  거래량 ${d?.vol?.toLocaleString('ko-KR') ?? '-'}`;
+                            },
+                            label: () => '',
+                        },
+                    },
+                    zoom: zoomOpts(),
+                },
+            },
+        });
+
+        syncZoom(myChart);
+    });
+}
+
+function resetZoom() {
+    if (myChart)  myChart.resetZoom();
+    if (volChart) volChart.resetZoom();
+}
+
+const urlCode = new URLSearchParams(location.search).get('code');
+if (urlCode) {
+    fetch(`${SERVER}/search?q=${encodeURIComponent(urlCode)}`)
+        .then(r => r.json())
+        .then(list => {
+            const item = list.find(i => i.code === urlCode) || list[0];
+            if (item) {
+                document.getElementById('search-input').value = item.name;
+                fetchStock(item.code, item.name);
+            }
+        })
+        .catch(() => {});
+}
+</script>
+</body>
+</html>
