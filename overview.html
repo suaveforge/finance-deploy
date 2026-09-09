@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta name="description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<link rel="canonical" href="https://finance.suaveforge.com/overview.html">
+<meta property="og:title" content="종목 한눈에 보기 · SuaveForge FINANCE">
+<meta property="og:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta property="og:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<meta property="og:url" content="https://finance.suaveforge.com/overview.html">
+<meta property="og:site_name" content="SuaveForge FINANCE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="종목 한눈에 보기 · SuaveForge FINANCE">
+<meta name="twitter:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta name="twitter:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<script async src="https://sitehub.suaveforge.com/analytics-loader.js" data-sitehub-project="p07"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>종목 한눈에 보기</title>
+<script src="auth.js"></script>
+<script src="nav.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 20px; }
+h1 { color: #fff; font-size: 22px; margin-bottom: 14px; }
+
+.toolbar {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 18px;
+}
+.toolbar-row {
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap;
+}
+.toolbar-group {
+    display: flex; align-items: center; gap: 8px;
+    background: #171729; border: 1px solid #2a2a3e;
+    border-radius: 8px; padding: 6px 8px;
+}
+.toolbar label { font-size: 12px; color: #777; }
+select {
+    background: #0f0f1a; color: #ddd; border: 1px solid #444;
+    border-radius: 6px; padding: 7px 26px 7px 9px; font-size: 13px;
+}
+input[type="number"] {
+    background: #0f0f1a; color: #ddd; border: 1px solid #444;
+    border-radius: 6px; padding: 7px 8px; font-size: 13px;
+    width: 58px;
+}
+input[type="time"] {
+    background: #0f0f1a; color: #ddd; border: 1px solid #444;
+    border-radius: 6px; padding: 7px 8px; font-size: 13px;
+}
+button {
+    background: #2a2a3e; color: #ccc;
+    border: 1px solid #444; padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; font-size: 13px;
+    touch-action: manipulation;
+}
+button:hover { background: #3a3a5e; color: #fff; }
+button.active { background: #2a3a5e; color: #7eb8f7; border-color: #7eb8f7; }
+
+.status-line {
+    display: flex; align-items: center; gap: 8px;
+    color: #666; font-size: 12px; min-height: 20px; margin-bottom: 12px;
+}
+.live-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #444; display: inline-block;
+}
+.live-dot.on { background: #44cc44; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+.grid.summary {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+}
+.card {
+    background: #1a1a2e; border: 1px solid #2a2a3e;
+    border-radius: 8px; padding: 12px;
+    overflow: hidden; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.card:hover { border-color: #7eb8f7; background: #1d1d34; }
+.card.trade-target {
+    border-color: #ccaa55;
+    box-shadow: inset 0 0 0 1px rgba(204,170,85,0.35);
+}
+.card.trade-target:hover { border-color: #e0c56d; }
+.card.loading { cursor: default; min-height: 210px; }
+.card.summary {
+    padding: 8px;
+    min-height: 0;
+}
+.card.summary.loading { min-height: 0; }
+.card.summary .card-head { margin-bottom: 7px; gap: 6px; }
+.card.summary .stock-name { max-width: 88px; font-size: 12px; }
+.card.summary .stock-code { font-size: 10px; }
+.card.summary .flow-score { font-size: 9px; padding: 3px 4px; }
+.card-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px; margin-bottom: 10px;
+}
+.name-line {
+    display: flex; align-items: center; gap: 6px;
+    min-width: 0;
+}
+.stock-name {
+    color: #f2f2f2; font-weight: bold; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 128px;
+}
+.stock-code { color: #666; font-size: 11px; margin-top: 2px; }
+.summary-change {
+    color: #777; font-size: 10px; margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+}
+.daily-threshold {
+    color: #777; font-size: 10px; margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+}
+.card.summary .daily-threshold { margin-top: 5px; }
+.rank {
+    color: #777; font-size: 11px; border: 1px solid #333;
+    border-radius: 5px; padding: 3px 6px; white-space: nowrap;
+}
+.flow-score {
+    font-size: 10px; line-height: 1;
+    border: 1px solid #333; border-radius: 5px;
+    padding: 3px 5px; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.flow-score.up { color: #ff6655; border-color: #5a2a2a; background: rgba(255,102,85,0.08); }
+.flow-score.down { color: #5599ff; border-color: #243a66; background: rgba(85,153,255,0.08); }
+.flow-score.flat { color: #777; border-color: #333; background: rgba(120,120,140,0.06); }
+.price-row {
+    display: flex; align-items: baseline; gap: 7px;
+    margin-bottom: 10px; font-variant-numeric: tabular-nums;
+}
+.price { color: #eee; font-size: 20px; font-weight: bold; }
+.change { font-size: 12px; }
+.up { color: #ff6655; }
+.down { color: #5599ff; }
+.flat { color: #888; }
+
+.signals {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 6px; margin-bottom: 10px;
+}
+.signal {
+    background: #11111f; border: 1px solid #252538;
+    border-radius: 6px; padding: 7px 6px;
+    min-width: 0;
+}
+.signal-label { color: #777; font-size: 11px; margin-bottom: 5px; }
+.signal-icons {
+    display: flex; align-items: center; gap: 2px;
+    height: 16px; font-size: 13px; line-height: 1;
+}
+.signal-icons .ghost { color: #363648; }
+.sig-buy { color: #ff6655; }
+.sig-sell { color: #5599ff; }
+.sig-none { color: #555; }
+.signal-value {
+    color: #888; font-size: 10px; margin-top: 5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+}
+
+.mini-chart-wrap {
+    height: clamp(96px, 18vw, 128px); margin-bottom: 10px;
+    background: #11111f; border: 1px solid #252538;
+    border-radius: 6px; overflow: hidden; position: relative;
+    cursor: pointer;
+}
+.mini-chart-wrap:hover { border-color: #7eb8f7; }
+.mini-chart {
+    width: 100%; height: 100%; display: block;
+}
+.mini-chart-empty {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    color: #3d3d4d; font-size: 11px;
+}
+
+.mini-hoga {
+    width: 100%; border-collapse: collapse;
+    font-size: 11px; font-variant-numeric: tabular-nums;
+}
+.mini-hoga td {
+    border-bottom: 1px solid #10101c; padding: 3px 4px;
+    white-space: nowrap;
+}
+.mini-hoga td:nth-child(1),
+.mini-hoga td:nth-child(2) { text-align: right; color: #5599ff; }
+.mini-hoga td:nth-child(3) { text-align: center; color: #555; width: 20px; }
+.mini-hoga td:nth-child(4),
+.mini-hoga td:nth-child(5) { color: #ff6655; }
+.mini-hoga .price-cell { color: #bbb; }
+.mini-hoga .empty { color: #333; text-align: center; padding: 18px 0; }
+
+.summary-pressure {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 6px; padding: 6px;
+    border: 1px solid #252538; border-radius: 6px;
+    background: #11111f; margin-bottom: 6px;
+}
+.summary-pressure .signal-icons { height: 13px; font-size: 11px; }
+.summary-pressure-value {
+    font-size: 10px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+}
+.summary-hoga {
+    width: 100%; border-collapse: collapse;
+    font-size: 10px; font-variant-numeric: tabular-nums;
+}
+.summary-hoga td {
+    padding: 2px 3px; border-bottom: 1px solid #10101c;
+    white-space: nowrap;
+}
+.summary-hoga .side { color: #555; width: 30px; }
+.summary-hoga .px { color: #bbb; text-align: right; }
+.summary-hoga .qty { text-align: right; }
+.summary-hoga .ask .qty, .summary-hoga .ask .side { color: #5599ff; }
+.summary-hoga .bid .qty, .summary-hoga .bid .side { color: #ff6655; }
+.summary-time {
+    margin-top: 5px; color: #555; font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+.signal-order-status {
+    margin-top: 6px; color: #666; font-size: 10px;
+    min-height: 12px; font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.signal-order-status.buy { color: #ff8877; }
+.signal-order-status.sell { color: #77aaff; }
+.signal-order-status.ok { color: #77cc99; }
+.signal-order-status.warn { color: #ccaa55; }
+.signal-order-status.err { color: #cc7755; }
+.recovery-order-status {
+    margin-top: 5px; color: #ccaa55; font-size: 10px;
+    line-height: 1.45; font-variant-numeric: tabular-nums;
+}
+.recovery-order-status:empty { display: none; }
+.signal-targets {
+    color: #ccaa55; font-size: 11px;
+    min-width: 0; max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.meta-row {
+    display: flex; justify-content: space-between; gap: 10px;
+    margin-top: 9px; color: #555; font-size: 11px;
+}
+.loading-msg {
+    grid-column: 1 / -1; color: #555; font-size: 14px;
+    padding: 50px 0; text-align: center;
+}
+.card-error {
+    color: #777; font-size: 12px; padding: 36px 0 18px; text-align: center;
+}
+
+@media (max-width: 600px) {
+    body { padding: 12px; }
+    .grid { grid-template-columns: 1fr; gap: 10px; }
+    .grid.summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .toolbar-row { gap: 6px; }
+    .toolbar-group { width: 100%; justify-content: flex-start; overflow-x: auto; }
+    .toolbar-group.actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .toolbar-group.actions button { padding-left: 8px; padding-right: 8px; }
+    .signal-targets { flex: 1; max-width: none; }
+    select { min-width: 74px; }
+}
+</style>
+</head>
+<body>
+
+<h1>종목 한눈에 보기</h1>
+
+<div class="toolbar">
+    <div class="toolbar-row">
+    <div class="toolbar-group">
+        <label>보기</label>
+        <button id="btn-detail" onclick="setCardMode('detail')">상세</button>
+        <button id="btn-summary" class="active" onclick="setCardMode('summary')">요약</button>
+        <label for="rank-limit">표시</label>
+        <select id="rank-limit" onchange="reloadSymbols()">
+            <option value="10">상위 10</option>
+            <option value="20" selected>상위 20</option>
+            <option value="30">상위 30</option>
+            <option value="50">상위 50</option>
+        </select>
+        <label for="hoga-depth">호가</label>
+        <select id="hoga-depth" onchange="refreshAll()">
+            <option value="2" selected>2호가</option>
+            <option value="3">3호가</option>
+        </select>
+    </div>
+    </div>
+    <div class="toolbar-row">
+    <div class="toolbar-group actions">
+        <button id="btn-auto" onclick="toggleAuto()">자동갱신 OFF</button>
+        <button id="btn-signal-order" onclick="toggleSignalOrder()">주문 OFF</button>
+        <button id="btn-signal-exec" onclick="toggleSignalExec()">대기</button>
+        <button onclick="refreshAll()">새로고침</button>
+    </div>
+    </div>
+    <div class="toolbar-row">
+    <div class="toolbar-group">
+        <label for="signal-seconds">유지</label>
+        <input id="signal-seconds" type="number" min="0" value="0">
+        <label for="signal-pressure">압력</label>
+        <input id="signal-pressure" type="number" min="0" value="0">
+    </div>
+    </div>
+    <div class="toolbar-row">
+    <div class="toolbar-group">
+        <label for="signal-start-time">시작</label>
+        <input id="signal-start-time" type="time" value="08:30">
+        <label for="signal-end-time">종료</label>
+        <input id="signal-end-time" type="time" value="20:00">
+    </div>
+    </div>
+    <div class="toolbar-row">
+    <div class="toolbar-group">
+        <label for="signal-pct">등락폭%</label>
+        <input id="signal-pct" type="number" min="0" step="1" value="0" onchange="recalculateDailyThresholds()">
+        <label for="signal-recovery-pct">복구%</label>
+        <input id="signal-recovery-pct" type="number" min="0" step="0.1" value="0">
+    </div>
+    </div>
+    <div class="toolbar-row">
+    <div class="toolbar-group">
+        <label for="signal-reversal-minutes">분봉</label>
+        <input id="signal-reversal-minutes" type="number" min="1" value="50">
+        <label for="signal-reversal-pct">반전%</label>
+        <input id="signal-reversal-pct" type="number" min="0" step="0.1" value="0.6">
+    </div>
+    </div>
+    <div class="toolbar-row">
+    <div class="toolbar-group">
+        <label for="signal-holding-mode">보유방식</label>
+        <select id="signal-holding-mode">
+            <option value="0">0 로그</option>
+            <option value="1" selected>1 고정</option>
+            <option value="2">2 분할</option>
+        </select>
+        <label for="signal-qty">수량</label>
+        <input id="signal-qty" type="number" min="1" value="1">
+        <label for="signal-daily-limit">일제한</label>
+        <input id="signal-daily-limit" type="number" min="0" value="2">
+        <span class="signal-targets" id="signal-targets">대상 없음</span>
+    </div>
+    </div>
+</div>
+
+<div class="status-line">
+    <span class="live-dot" id="live-dot"></span>
+    <span id="status-text">대기중</span>
+</div>
+
+<div id="grid" class="grid summary">
+    <div class="loading-msg">시가총액 랭킹 로딩 중...</div>
+</div>
+
+<script>
+const SERVER = (localStorage.getItem('trade_server') || 'https://api-finance.suaveforge.com:18465/api').replace(/\/$/, '');
+const DATA_SERVER = (localStorage.getItem('data_server') || 'https://finance.suaveforge.com/data').replace(/\/$/, '');
+const API_DELAY_MS = 500;
+const CHART_POINTS = 90;
+const DAILY_THRESHOLD_FALLBACK_PCT = 2;
+const DEFAULT_DAILY_RANGE_PERCENT = 80;
+const SIGNAL_TARGETS_KEY = 'overview_signal_targets';
+const MAX_SIGNAL_TARGETS = 2;
+
+let symbols = [];
+let autoTimer = null;
+const DEFAULT_AUTO_REFRESH = false;
+
+let autoOn = DEFAULT_AUTO_REFRESH;
+let cardMode = 'summary';
+let refreshSeq = 0;
+let refreshing = false;
+let investorCache = {};
+let dailyChartCache = {};
+let dailyThresholdCache = {};
+let flowInputCache = {};
+let hogaPressureState = {};
+let priceHistoryCache = {};
+let reversalDebugCache = {};
+let signalDailyCounts = {};
+let recoveryOrderEntries = {};
+let recoveryOrderBusy = {};
+let signalOrderOn = false;
+let signalOrderAuto = false;
+let signalOrderBusy = {};
+let signalReversalActionLock = {};
+let signalOrderStatus = {};
+let signalTargetCodes = loadSignalTargets();
+let dailyThresholdDateKey = todayKey();
+let dailyThresholdTimer = null;
+
+function fmt(v) {
+    const n = parseInt(v, 10);
+    if (isNaN(n)) return '-';
+    return n.toLocaleString('ko-KR');
+}
+
+function fmtCompact(v) {
+    const n = parseInt(v, 10);
+    if (isNaN(n)) return '-';
+    const abs = Math.abs(n);
+    const sign = n > 0 ? '+' : n < 0 ? '-' : '';
+    if (abs >= 100000000) return sign + Math.round(abs / 100000000).toLocaleString('ko-KR') + '억';
+    if (abs >= 10000) return sign + Math.round(abs / 10000).toLocaleString('ko-KR') + '만';
+    return sign + abs.toLocaleString('ko-KR');
+}
+
+function fmtMarketCap(v) {
+    const n = parseNum(v);
+    if (!n) return '-';
+    if (n >= 1000000000000) {
+        const jo = n / 1000000000000;
+        return (jo >= 10 ? Math.round(jo) : Math.round(jo * 10) / 10).toLocaleString('ko-KR') + '조';
+    }
+    if (n >= 100000000) {
+        return Math.round(n / 100000000).toLocaleString('ko-KR') + '억';
+    }
+    return n.toLocaleString('ko-KR');
+}
+
+function parseNum(v) {
+    const n = parseInt(String(v || '0').replace(/,/g, ''), 10);
+    return isNaN(n) ? 0 : n;
+}
+
+function setStatus(text, live) {
+    document.getElementById('status-text').textContent = text;
+    document.getElementById('live-dot').classList.toggle('on', !!live && autoOn);
+}
+
+function nowLabel() {
+    const d = new Date();
+    return d.getHours().toString().padStart(2, '0') + ':' +
+           d.getMinutes().toString().padStart(2, '0') + ':' +
+           d.getSeconds().toString().padStart(2, '0');
+}
+
+async function loadSymbols() {
+    const res = await fetch(`${DATA_SERVER}/ranking/symbols_marketcap.csv?t=${Date.now()}`);
+    if (!res.ok) throw new Error('ranking not found');
+    const text = await res.text();
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rankingIdx = headers.indexOf('ranking');
+    const symbolIdx = headers.indexOf('symbol');
+    const nameIdx = headers.indexOf('kor_name');
+    const capIdx = headers.indexOf('cap');
+    const priceIdx = headers.indexOf('prpr');
+    const limit = parseInt(document.getElementById('rank-limit').value, 10);
+
+    return lines.slice(1, limit + 1).map((line, i) => {
+        const c = line.split(',');
+        return {
+            rank: parseNum(c[rankingIdx]) || i + 1,
+            code: (c[symbolIdx] || '').trim(),
+            name: (c[nameIdx] || '').trim(),
+            cap: (c[capIdx] || '').trim(),
+            rankPrice: (c[priceIdx] || '').trim(),
+        };
+    }).filter(s => s.code);
+}
+
+function signalStrength(value, basis, kind) {
+    const abs = Math.abs(value);
+    if (abs <= 0) return 0;
+    if (kind === 'hoga') {
+        const ratio = abs / Math.max(1, basis);
+        if (ratio >= 0.35) return 3;
+        if (ratio >= 0.15) return 2;
+        return 1;
+    }
+    if (abs >= 100000) return 3;
+    if (abs >= 10000) return 2;
+    return 1;
+}
+
+function signedStrength(value, basis, kind) {
+    const strength = signalStrength(value, basis, kind);
+    return value > 0 ? strength : value < 0 ? -strength : 0;
+}
+
+function pressureTimeLabel(seconds) {
+    if (seconds >= 30) return '지속';
+    if (seconds >= 15) return '유지';
+    return seconds + 's';
+}
+
+function computeHogaPressure(code, ntby, totalAsk, totalBid) {
+    const now = Date.now();
+    const total = Math.max(1, totalAsk + totalBid);
+    const net = ntby || (totalBid - totalAsk);
+    const ratio = net / total;
+    const direction = ratio > 0 ? 1 : ratio < 0 ? -1 : 0;
+    const absRatio = Math.abs(ratio);
+    const strength = absRatio >= 0.45 ? 3 : absRatio >= 0.25 ? 2 : absRatio >= 0.10 ? 1 : 0;
+    let state = hogaPressureState[code];
+
+    if (!direction || !strength) {
+        state = { direction: 0, since: now, lastSeen: now };
+    } else if (!state || state.direction !== direction) {
+        state = { direction, since: now, lastSeen: now };
+    } else {
+        state.lastSeen = now;
+    }
+    hogaPressureState[code] = state;
+
+    const seconds = direction && strength ? Math.floor((now - state.since) / 1000) : 0;
+    const score = Math.round(ratio * 100);
+    const component = score / 100 * 3;
+
+    return {
+        net,
+        direction,
+        strength,
+        seconds,
+        score,
+        component,
+        label: '압력 ' + (score > 0 ? '+' : '') + score + ' ' + pressureTimeLabel(seconds),
+    };
+}
+
+function signalIcon(label, value, strength, valueLabel) {
+    const positive = value > 0;
+    const zero = value === 0 || strength === 0;
+    const cls = zero ? 'sig-none' : positive ? 'sig-buy' : 'sig-sell';
+    const icon = zero ? '◆' : positive ? '▲' : '▼';
+    let icons = '';
+    for (let i = 1; i <= 3; i++) {
+        icons += `<span class="${i <= strength ? cls : 'ghost'}">${icon}</span>`;
+    }
+    return `<div class="signal">
+        <div class="signal-label">${label}</div>
+        <div class="signal-icons">${icons}</div>
+        <div class="signal-value ${cls}">${valueLabel}</div>
+    </div>`;
+}
+
+function signalIconsOnly(value, strength) {
+    const positive = value > 0;
+    const zero = value === 0 || strength === 0;
+    const cls = zero ? 'sig-none' : positive ? 'sig-buy' : 'sig-sell';
+    const icon = zero ? '◆' : positive ? '▲' : '▼';
+    let icons = '';
+    for (let i = 1; i <= 3; i++) {
+        icons += `<span class="${i <= strength ? cls : 'ghost'}">${icon}</span>`;
+    }
+    return icons;
+}
+
+async function fetchJson(path) {
+    const res = await fetch(`${SERVER}${path}`);
+    return res.json();
+}
+
+async function postJson(path, body) {
+    const res = await fetch(`${SERVER}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    return res.json();
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function loadDailySeries(code) {
+    if (dailyChartCache[code]) return dailyChartCache[code];
+
+    const res = await fetch(`${DATA_SERVER}/daily/${code}.csv?t=${Date.now()}`);
+    if (!res.ok) throw new Error('daily not found');
+    const text = await res.text();
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const dateIdx = headers.indexOf('timestamp');
+    const priceIdx = headers.indexOf('price');
+    const highIdx = headers.indexOf('high');
+    const lowIdx = headers.indexOf('low');
+    const volIdx = headers.indexOf('vol');
+    if (priceIdx < 0) return [];
+
+    const data = lines.slice(1).map(line => {
+        const c = line.split(',');
+        return {
+            date: dateIdx >= 0 ? String(c[dateIdx] || '').replace(/\D/g, '').slice(0, 8) : '',
+            price: parseFloat(c[priceIdx]),
+            high: highIdx >= 0 ? parseFloat(c[highIdx]) : 0,
+            low: lowIdx >= 0 ? parseFloat(c[lowIdx]) : 0,
+            vol: volIdx >= 0 ? parseFloat(c[volIdx]) : 0,
+        };
+    }).filter(d => Number.isFinite(d.price) && d.price > 0).slice(-CHART_POINTS);
+
+    dailyChartCache[code] = data;
+    return data;
+}
+
+function dailyRangePercent() {
+    const input = document.getElementById('signal-pct');
+    const v = parseFloat(input?.value || String(DEFAULT_DAILY_RANGE_PERCENT));
+    return Number.isFinite(v) && v >= 0 ? v : DEFAULT_DAILY_RANGE_PERCENT;
+}
+
+function fallbackSignalPercentThreshold() {
+    return DAILY_THRESHOLD_FALLBACK_PCT;
+}
+
+function fmtPct(v) {
+    if (!Number.isFinite(v)) return '-';
+    return (v >= 10 ? v.toFixed(1) : v.toFixed(2)) + '%';
+}
+
+function calculateDailyThreshold(data) {
+    const cutoff = todayKey();
+    const rows = (data || [])
+        .filter(d => !d.date || d.date < cutoff)
+        .filter(d => Number.isFinite(d.price) && d.price > 0);
+    if (rows.length < 6) return null;
+
+    const recent = rows.slice(-6);
+    const moves = [];
+    for (let i = 1; i < recent.length; i++) {
+        const prev = recent[i - 1].price;
+        const high = recent[i].high;
+        const low = recent[i].low;
+        if (prev > 0 && Number.isFinite(high) && Number.isFinite(low) && high >= low) {
+            moves.push((high - low) / prev * 100);
+        }
+    }
+    if (!moves.length) return null;
+    const avg = moves.reduce((sum, v) => sum + v, 0) / moves.length;
+    return avg * dailyRangePercent() / 100;
+}
+
+function updateDailyThresholdDisplay(code) {
+    const el = document.getElementById('daily-threshold-' + code);
+    if (!el) return;
+    if (dailyRangePercent() === 0) {
+        el.textContent = '등락기준 OFF';
+        return;
+    }
+    const cached = dailyThresholdCache[code];
+    if (cached && cached.dateKey === todayKey() && Number.isFinite(cached.value)) {
+        el.textContent = `등락기준 ${fmtPct(cached.value)} (${fmtPct(dailyRangePercent())})`;
+        return;
+    }
+    el.textContent = '등락기준 기본 ' + fmtPct(fallbackSignalPercentThreshold());
+}
+
+async function ensureDailyThreshold(code) {
+    const cached = dailyThresholdCache[code];
+    if (cached && cached.dateKey === todayKey()) {
+        updateDailyThresholdDisplay(code);
+        return cached.value;
+    }
+
+    try {
+        const data = await loadDailySeries(code);
+        const value = calculateDailyThreshold(data);
+        dailyThresholdCache[code] = { dateKey: todayKey(), value };
+        updateDailyThresholdDisplay(code);
+        return value;
+    } catch {
+        dailyThresholdCache[code] = { dateKey: todayKey(), value: null };
+        updateDailyThresholdDisplay(code);
+        return null;
+    }
+}
+
+function recalculateDailyThresholds() {
+    dailyThresholdCache = {};
+    visibleSymbols().forEach(symbol => requestAnimationFrame(() => ensureDailyThreshold(symbol.code)));
+}
+
+function signalPercentThreshold(code) {
+    const cached = dailyThresholdCache[code];
+    if (cached && cached.dateKey === todayKey() && Number.isFinite(cached.value)) {
+        return cached.value;
+    }
+    return fallbackSignalPercentThreshold();
+}
+
+function chartTrendScore(code) {
+    const data = dailyChartCache[code];
+    if (!data || data.length < 2) return 0;
+    const first = data[0].price;
+    const last = data[data.length - 1].price;
+    const pct = (last - first) / Math.max(1, first);
+    const abs = Math.abs(pct);
+    const strength = abs >= 0.12 ? 3 : abs >= 0.04 ? 2 : abs > 0 ? 1 : 0;
+    return pct > 0 ? strength : pct < 0 ? -strength : 0;
+}
+
+function updateFlowScore(code, score) {
+    const el = document.getElementById('flow-score-' + code);
+    if (!el) return;
+    const cls = score > 0 ? 'up' : score < 0 ? 'down' : 'flat';
+    el.className = 'flow-score ' + cls;
+    el.textContent = '수급 ' + (score > 0 ? '+' : '') + score;
+}
+
+function computeFlowScore(code, ntby, totalAsk, totalBid, inv) {
+    const trendWeight = 0.5;
+    const input = flowInputCache[code];
+    const hogaComponent = input?.hogaComponent ??
+        signedStrength(ntby, Math.max(totalAsk, totalBid), 'hoga');
+    const sum =
+        chartTrendScore(code) * trendWeight +
+        hogaComponent +
+        signedStrength(inv.frgn, 0, 'investor') +
+        signedStrength(inv.orgn, 0, 'investor');
+    return Math.round((sum / (9 + 3 * trendWeight)) * 100);
+}
+
+function updateCachedFlowScore(code) {
+    const input = flowInputCache[code];
+    if (!input) return;
+    updateFlowScore(code, computeFlowScore(code, input.ntby, input.totalAsk, input.totalBid, input.inv));
+}
+
+function drawMiniChart(canvas, data) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    if (!data || data.length < 2) return false;
+
+    const prices = data.map(d => d.price);
+    const vols = data.map(d => Number.isFinite(d.vol) ? Math.max(0, d.vol) : 0);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const span = Math.max(1, max - min);
+    const padX = 8 * dpr;
+    const padTop = 7 * dpr;
+    const padBottom = 6 * dpr;
+    const volH = 11 * dpr;
+    const gap = 5 * dpr;
+    const plotW = w - padX * 2;
+    const plotH = h - padTop - padBottom - volH - gap;
+    const first = prices[0];
+    const last = prices[prices.length - 1];
+    const lineColor = last >= first ? '#ff6655' : '#5599ff';
+    const fillColor = last >= first ? 'rgba(255,102,85,0.08)' : 'rgba(85,153,255,0.08)';
+
+    const points = prices.map((v, i) => ({
+        x: padX + (plotW * i / (data.length - 1)),
+        y: padTop + plotH - ((v - min) / span * plotH),
+    }));
+
+    ctx.strokeStyle = '#24243a';
+    ctx.lineWidth = 1 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(padX, padTop + plotH / 2);
+    ctx.lineTo(padX + plotW, padTop + plotH / 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.lineTo(padX + plotW, padTop + plotH);
+    ctx.lineTo(padX, padTop + plotH);
+    ctx.closePath();
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+
+    ctx.beginPath();
+    points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1.6 * dpr;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    const lastPoint = points[points.length - 1];
+    ctx.beginPath();
+    ctx.arc(lastPoint.x, lastPoint.y, 2.3 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = lineColor;
+    ctx.fill();
+
+    const maxVol = Math.max(1, ...vols);
+    const barGap = 1 * dpr;
+    const barW = Math.max(1, plotW / vols.length - barGap);
+    const volBase = h - padBottom;
+    ctx.fillStyle = 'rgba(130,130,160,0.35)';
+    vols.forEach((v, i) => {
+        const bh = Math.max(1, (v / maxVol) * volH);
+        const x = padX + (plotW * i / vols.length);
+        ctx.fillRect(x, volBase - bh, barW, bh);
+    });
+    return true;
+}
+
+function chartTimeLabel(ts) {
+    const d = new Date(ts);
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+function drawMarker(ctx, point, color, label, dpr) {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 3.2 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#0f0f1a';
+    ctx.lineWidth = 1.2 * dpr;
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.font = `${9 * dpr}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, point.x, Math.max(9 * dpr, point.y - 6 * dpr));
+}
+
+function drawReversalChart(canvas, snapshot) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    if (!snapshot || !snapshot.rows || snapshot.rows.length < 2) return false;
+
+    const rows = snapshot.rows;
+    const rawPrices = rows.map(row => row.price)
+        .concat([snapshot.sellTrigger, snapshot.buyTrigger])
+        .filter(Number.isFinite);
+    const min = Math.min(...rawPrices);
+    const max = Math.max(...rawPrices);
+    const span = Math.max(1, max - min);
+    const padX = 10 * dpr;
+    const padTop = 12 * dpr;
+    const padBottom = 14 * dpr;
+    const plotW = w - padX * 2;
+    const plotH = h - padTop - padBottom;
+    const firstTs = rows[0].ts;
+    const lastTs = rows[rows.length - 1].ts;
+    const tsSpan = Math.max(1, lastTs - firstTs);
+    const xOf = ts => padX + ((ts - firstTs) / tsSpan) * plotW;
+    const yOf = price => padTop + plotH - ((price - min) / span) * plotH;
+    const points = rows.map(row => ({ row, x: xOf(row.ts), y: yOf(row.price) }));
+    const first = rows[0].price;
+    const last = rows[rows.length - 1].price;
+    const lineColor = snapshot.action === 'SELL' ? '#5599ff'
+        : snapshot.action === 'BUY' ? '#ff6655'
+        : last >= first ? '#ff6655' : '#5599ff';
+
+    ctx.strokeStyle = '#24243a';
+    ctx.lineWidth = 1 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(padX, padTop + plotH / 2);
+    ctx.lineTo(padX + plotW, padTop + plotH / 2);
+    ctx.stroke();
+
+    [
+        { price: snapshot.sellTrigger, color: 'rgba(85,153,255,0.55)', label: 'S' },
+        { price: snapshot.buyTrigger, color: 'rgba(255,102,85,0.55)', label: 'B' },
+    ].forEach(line => {
+        if (!Number.isFinite(line.price)) return;
+        const y = yOf(line.price);
+        ctx.save();
+        ctx.setLineDash([3 * dpr, 3 * dpr]);
+        ctx.strokeStyle = line.color;
+        ctx.lineWidth = 1 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(padX, y);
+        ctx.lineTo(padX + plotW, y);
+        ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = line.color;
+        ctx.font = `${9 * dpr}px Arial`;
+        ctx.textAlign = 'left';
+        ctx.fillText(`${line.label} ${fmt(Math.round(line.price))}`, padX + 2 * dpr, y - 2 * dpr);
+    });
+
+    ctx.beginPath();
+    points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1.6 * dpr;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    const highPoint = points.find(p => p.row.ts === snapshot.high.ts && p.row.price === snapshot.high.price);
+    const lowPoint = points.find(p => p.row.ts === snapshot.low.ts && p.row.price === snapshot.low.price);
+    const lastPoint = points[points.length - 1];
+    if (lowPoint) drawMarker(ctx, lowPoint, '#5599ff', 'L', dpr);
+    if (highPoint) drawMarker(ctx, highPoint, '#ff6655', 'H', dpr);
+    drawMarker(ctx, lastPoint, '#e0e0e0', snapshot.action || 'N', dpr);
+
+    ctx.fillStyle = '#777';
+    ctx.font = `${9 * dpr}px Arial`;
+    ctx.textAlign = 'right';
+    const metric = snapshot.action === 'SELL'
+        ? `하락 ${fmtPct(snapshot.pullback)}`
+        : snapshot.action === 'BUY'
+            ? `반등 ${fmtPct(snapshot.rebound)}`
+            : `H↓${fmtPct(snapshot.pullback)} L↑${fmtPct(snapshot.rebound)}`;
+    ctx.fillText(`${chartTimeLabel(firstTs)}-${chartTimeLabel(lastTs)} ${metric}`, w - padX, h - 4 * dpr);
+    return true;
+}
+
+async function renderMiniChart(code) {
+    const canvas = document.getElementById('chart-' + code);
+    const empty = document.getElementById('chart-empty-' + code);
+    if (!canvas) return;
+    const ok = drawReversalChart(canvas, reversalDebugCache[code]);
+    if (empty) {
+        empty.textContent = '분봉 수집중';
+        empty.style.display = ok ? 'none' : 'flex';
+    }
+}
+
+function bindChartClick(symbol) {
+    const card = document.getElementById('card-' + symbol.code);
+    const chartWrap = card?.querySelector('.mini-chart-wrap');
+    if (!chartWrap || chartWrap.dataset.bound) return;
+    chartWrap.dataset.bound = '1';
+    chartWrap.onclick = e => {
+        e.stopPropagation();
+        location.href = `search.html?code=${encodeURIComponent(symbol.code)}`;
+    };
+}
+
+function bindCardTargetClick(symbol) {
+    const card = document.getElementById('card-' + symbol.code);
+    if (!card) return;
+    card.onclick = () => toggleSignalTarget(symbol);
+}
+
+function extractPrice(output2) {
+    const sdpr = parseNum(output2.stck_sdpr);
+    const prpr = parseNum(output2.stck_prpr);
+    const vrss = prpr - sdpr;
+    const ctrt = sdpr > 0 ? (vrss / sdpr * 100) : 0;
+    const isUp = vrss > 0;
+    const isDown = vrss < 0;
+    const cls = isUp ? 'up' : isDown ? 'down' : 'flat';
+    const pfx = isUp ? '+' : isDown ? '-' : '';
+    return {
+        sdpr,
+        prpr,
+        pct: ctrt,
+        cls,
+        rateText: `${pfx}${Math.abs(ctrt).toFixed(2)}%`,
+        changeText: `${pfx}${Math.abs(vrss).toLocaleString('ko-KR')} (${pfx}${Math.abs(ctrt).toFixed(2)}%)`,
+    };
+}
+
+function renderMiniHoga(o1, sdpr) {
+    const depth = parseInt(document.getElementById('hoga-depth').value, 10);
+    let rows = '';
+    for (let i = depth; i >= 1; i--) {
+        const askPrice = parseNum(o1['askp' + i]);
+        const askQty = parseNum(o1['askp_rsqn' + i]);
+        rows += `<tr>
+            <td>${fmt(askQty)}</td>
+            <td class="price-cell ${askPrice > sdpr ? 'up' : askPrice < sdpr ? 'down' : ''}">${fmt(askPrice)}</td>
+            <td>매도${i}</td>
+            <td></td>
+            <td></td>
+        </tr>`;
+    }
+    for (let i = 1; i <= depth; i++) {
+        const bidPrice = parseNum(o1['bidp' + i]);
+        const bidQty = parseNum(o1['bidp_rsqn' + i]);
+        rows += `<tr>
+            <td></td>
+            <td></td>
+            <td>매수${i}</td>
+            <td class="price-cell ${bidPrice > sdpr ? 'up' : bidPrice < sdpr ? 'down' : ''}">${fmt(bidPrice)}</td>
+            <td>${fmt(bidQty)}</td>
+        </tr>`;
+    }
+    return `<table class="mini-hoga"><tbody>${rows}</tbody></table>`;
+}
+
+function renderSummaryHoga(o1, sdpr) {
+    const rows = [];
+    for (let i = 2; i >= 1; i--) {
+        const price = parseNum(o1['askp' + i]);
+        const qty = parseNum(o1['askp_rsqn' + i]);
+        rows.push(`<tr class="ask">
+            <td class="side">매도${i}</td>
+            <td class="px ${price > sdpr ? 'up' : price < sdpr ? 'down' : ''}">${fmt(price)}</td>
+            <td class="qty">${fmt(qty)}</td>
+        </tr>`);
+    }
+    for (let i = 1; i <= 2; i++) {
+        const price = parseNum(o1['bidp' + i]);
+        const qty = parseNum(o1['bidp_rsqn' + i]);
+        rows.push(`<tr class="bid">
+            <td class="side">매수${i}</td>
+            <td class="px ${price > sdpr ? 'up' : price < sdpr ? 'down' : ''}">${fmt(price)}</td>
+            <td class="qty">${fmt(qty)}</td>
+        </tr>`);
+    }
+    return `<table class="summary-hoga"><tbody>${rows.join('')}</tbody></table>`;
+}
+
+function investorSignals(investor) {
+    const row = investor && investor.rt_cd === '0' && investor.output && investor.output[0]
+        ? investor.output[0]
+        : {};
+    const frgn = parseNum(row.frgn_ntby_qty);
+    const orgn = parseNum(row.orgn_ntby_qty);
+    return {
+        frgn,
+        orgn,
+        frgnLabel: fmtCompact(frgn) + '주',
+        orgnLabel: fmtCompact(orgn) + '주',
+    };
+}
+
+function signalOrderQty() {
+    const input = document.getElementById('signal-qty');
+    const qty = parseInt(input?.value || '1', 10);
+    return Number.isFinite(qty) && qty > 0 ? qty : 1;
+}
+
+function signalHoldSeconds() {
+    const input = document.getElementById('signal-seconds');
+    const seconds = parseInt(input?.value || '0', 10);
+    return Number.isFinite(seconds) && seconds >= 0 ? seconds : 0;
+}
+
+function signalPressureThreshold() {
+    const input = document.getElementById('signal-pressure');
+    const pressure = parseInt(input?.value || '0', 10);
+    return Number.isFinite(pressure) && pressure >= 0 ? pressure : 0;
+}
+
+function signalDailyLimit() {
+    const input = document.getElementById('signal-daily-limit');
+    const limit = parseInt(input?.value || '2', 10);
+    return Number.isFinite(limit) && limit >= 0 ? limit : 2;
+}
+
+function signalStartTimeValue() {
+    return document.getElementById('signal-start-time')?.value || '';
+}
+
+function signalEndTimeValue() {
+    return document.getElementById('signal-end-time')?.value || '';
+}
+
+function signalReversalMinutes() {
+    const input = document.getElementById('signal-reversal-minutes');
+    const minutes = parseInt(input?.value || '50', 10);
+    return Number.isFinite(minutes) && minutes > 0 ? minutes : 50;
+}
+
+function signalReversalPercent() {
+    const input = document.getElementById('signal-reversal-pct');
+    const pct = parseFloat(input?.value || '0.6');
+    return Number.isFinite(pct) && pct >= 0 ? pct : 0.6;
+}
+
+function signalRecoveryPercent() {
+    const input = document.getElementById('signal-recovery-pct');
+    const pct = parseFloat(input?.value || '0');
+    return Number.isFinite(pct) && pct >= 0 ? pct : 0;
+}
+
+function signalHoldingMode() {
+    return document.getElementById('signal-holding-mode')?.value || '1';
+}
+
+function dailyCountKey(code) {
+    return `${todayKey()}:${code}`;
+}
+
+function signalDailyCount(code) {
+    return signalDailyCounts[dailyCountKey(code)] || 0;
+}
+
+function incrementSignalDailyCount(code) {
+    const key = dailyCountKey(code);
+    signalDailyCounts[key] = (signalDailyCounts[key] || 0) + 1;
+}
+
+function addRecoveryOrderEntry(symbol, action, qty, price) {
+    const pct = signalRecoveryPercent();
+    if (pct <= 0 || qty <= 0 || price <= 0) return;
+    const entries = recoveryOrderEntries[symbol.code] || [];
+    entries.push({
+        id: `${Date.now()}:${action}:${price}:${entries.length}`,
+        action,
+        qty,
+        price,
+        recoveryPct: pct,
+        createdAt: Date.now(),
+    });
+    recoveryOrderEntries[symbol.code] = entries;
+    renderRecoveryOrderStatus(symbol.code);
+}
+
+function removeRecoveryOrderEntry(code, id) {
+    recoveryOrderEntries[code] = (recoveryOrderEntries[code] || [])
+        .filter(entry => entry.id !== id);
+    if (!recoveryOrderEntries[code].length) delete recoveryOrderEntries[code];
+    delete recoveryOrderBusy[id];
+    renderRecoveryOrderStatus(code);
+}
+
+function recoveryTargetPrice(entry) {
+    const ratio = entry.recoveryPct / 100;
+    return entry.action === 'SELL'
+        ? entry.price * (1 - ratio)
+        : entry.price * (1 + ratio);
+}
+
+function priceTick(price) {
+    if (price < 2000) return 1;
+    if (price < 5000) return 5;
+    if (price < 20000) return 10;
+    if (price < 50000) return 50;
+    if (price < 200000) return 100;
+    if (price < 500000) return 500;
+    return 1000;
+}
+
+function roundRecoveryTargetPrice(entry) {
+    const target = recoveryTargetPrice(entry);
+    const tick = priceTick(target);
+    return entry.action === 'SELL'
+        ? Math.floor(target / tick) * tick
+        : Math.ceil(target / tick) * tick;
+}
+
+function renderRecoveryOrderStatus(code) {
+    const el = document.getElementById('recovery-order-' + code);
+    if (!el) return;
+    const entries = recoveryOrderEntries[code] || [];
+    el.innerHTML = entries.map(entry => {
+        const recoveryAction = entry.action === 'SELL' ? 'BUY' : 'SELL';
+        const operator = entry.action === 'SELL' ? '≤' : '≥';
+        return `원주문 ${entry.action} ${fmt(entry.qty)}주 ${fmt(entry.price)} → 복구 ${recoveryAction} ${operator}${fmt(roundRecoveryTargetPrice(entry))}`;
+    }).join('<br>');
+}
+
+function loadSignalTargets() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(SIGNAL_TARGETS_KEY) || '[]');
+        return Array.isArray(parsed) ? parsed.filter(code => /^\d{6}$/.test(String(code))).slice(0, MAX_SIGNAL_TARGETS) : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveSignalTargets() {
+    localStorage.setItem(SIGNAL_TARGETS_KEY, JSON.stringify(signalTargetCodes));
+}
+
+function isSignalTarget(code) {
+    return signalTargetCodes.includes(code);
+}
+
+function visibleSymbols() {
+    return signalOrderOn ? symbols.filter(symbol => isSignalTarget(symbol.code)) : symbols;
+}
+
+function cardClass(code) {
+    const base = cardMode === 'summary' ? 'card summary' : 'card';
+    return base + (isSignalTarget(code) ? ' trade-target' : '');
+}
+
+function signalTargetLabel(code) {
+    const s = symbols.find(item => item.code === code);
+    return s ? `${s.name || code}(${code})` : code;
+}
+
+function updateSignalTargetsView() {
+    const el = document.getElementById('signal-targets');
+    if (el) {
+        el.textContent = signalTargetCodes.length
+            ? signalTargetCodes.map(signalTargetLabel).join(', ')
+            : '대상 없음';
+    }
+    symbols.forEach(symbol => {
+        const card = document.getElementById('card-' + symbol.code);
+        if (card) card.classList.toggle('trade-target', isSignalTarget(symbol.code));
+    });
+}
+
+function toggleSignalTarget(symbol) {
+    const code = symbol.code;
+    if (isSignalTarget(code)) {
+        signalTargetCodes = signalTargetCodes.filter(item => item !== code);
+        delete signalReversalActionLock[code];
+        setSignalOrderStatus(code, '', '');
+    } else {
+        if (signalTargetCodes.length >= MAX_SIGNAL_TARGETS) {
+            setStatus(`매매대상은 최대 ${MAX_SIGNAL_TARGETS}개`, autoOn);
+            return;
+        }
+        signalTargetCodes.push(code);
+    }
+    saveSignalTargets();
+    updateSignalTargetsView();
+    if (signalOrderOn) {
+        renderSymbols().then(() => { if (autoOn) refreshAll(); });
+    }
+}
+
+function setSignalOrderStatus(code, text, cls = '') {
+    signalOrderStatus[code] = { text, cls };
+    const el = document.getElementById('signal-order-' + code);
+    if (!el) return;
+    el.className = 'signal-order-status ' + cls;
+    el.textContent = text || '';
+}
+
+function renderSignalOrderStatus(code) {
+    const s = signalOrderStatus[code];
+    setSignalOrderStatus(code, s?.text || '', s?.cls || '');
+}
+
+function signalOrderCandidate(hogaPressure) {
+    const holdSeconds = signalHoldSeconds();
+    const pressureThreshold = signalPressureThreshold();
+    if (pressureThreshold === 0) {
+        return { action: '', key: 'pressure:any', label: '압력무시' };
+    }
+    const persistent = hogaPressure.seconds >= holdSeconds;
+    if (persistent && hogaPressure.direction > 0 && hogaPressure.score >= pressureThreshold) {
+        return { action: 'BUY', key: 'pressure:BUY', label: '압력' };
+    }
+    if (persistent && hogaPressure.direction < 0 && hogaPressure.score <= -pressureThreshold) {
+        return { action: 'SELL', key: 'pressure:SELL', label: '압력' };
+    }
+    return null;
+}
+
+function todayKey() {
+    const d = new Date();
+    return d.getFullYear().toString() +
+        String(d.getMonth() + 1).padStart(2, '0') +
+        String(d.getDate()).padStart(2, '0');
+}
+
+function hhmmFromTimeValue(value) {
+    const m = /^(\d{2}):(\d{2})$/.exec(value || '');
+    return m ? parseInt(m[1], 10) * 100 + parseInt(m[2], 10) : 0;
+}
+
+function hhmmFromHogaHour(value) {
+    const s = String(value || '').replace(/\D/g, '');
+    if (s.length < 4) return 0;
+    return parseInt(s.slice(0, 2), 10) * 100 + parseInt(s.slice(2, 4), 10);
+}
+
+function timestampFromHogaHour(value) {
+    const s = String(value || '').replace(/\D/g, '');
+    if (s.length < 4) return Date.now();
+    const now = new Date();
+    const hour = parseInt(s.slice(0, 2), 10);
+    const minute = parseInt(s.slice(2, 4), 10);
+    const second = s.length >= 6 ? parseInt(s.slice(4, 6), 10) : 0;
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return Date.now();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, second, 0);
+    return d.getTime();
+}
+
+function recordPriceHistory(code, priceInfo, hogaHour) {
+    if (!priceInfo || !Number.isFinite(priceInfo.prpr) || priceInfo.prpr <= 0) return;
+    const ts = Math.floor(timestampFromHogaHour(hogaHour) / 60000) * 60000;
+    const keepMs = Math.max(240, signalReversalMinutes() * 3) * 60000;
+    const arr = priceHistoryCache[code] || [];
+    const last = arr[arr.length - 1];
+    if (last && last.ts === ts) {
+        last.price = priceInfo.prpr;
+    } else {
+        arr.push({ ts, price: priceInfo.prpr });
+    }
+    const cutoff = ts - keepMs;
+    priceHistoryCache[code] = arr.filter(row => row.ts >= cutoff);
+}
+
+function reversalSnapshot(code, priceInfo) {
+    const threshold = signalReversalPercent();
+    if (threshold <= 0 || !priceInfo || !Number.isFinite(priceInfo.prpr) || priceInfo.prpr <= 0) {
+        delete reversalDebugCache[code];
+        return null;
+    }
+
+    const arr = priceHistoryCache[code] || [];
+    if (arr.length < 2) {
+        delete reversalDebugCache[code];
+        return null;
+    }
+
+    const latestTs = arr[arr.length - 1].ts;
+    const cutoff = latestTs - signalReversalMinutes() * 60000;
+    const rows = arr.filter(row => row.ts >= cutoff);
+    if (rows.length < 2) {
+        delete reversalDebugCache[code];
+        return null;
+    }
+
+    let high = rows[0];
+    let low = rows[0];
+    rows.forEach(row => {
+        if (row.price >= high.price) high = row;
+        if (row.price <= low.price) low = row;
+    });
+
+    const current = priceInfo.prpr;
+    const pullback = high.price > 0 ? (high.price - current) / high.price * 100 : 0;
+    const rebound = low.price > 0 ? (current - low.price) / low.price * 100 : 0;
+    const sellTrigger = high.price * (1 - threshold / 100);
+    const buyTrigger = low.price * (1 + threshold / 100);
+    let action = '';
+    let pivot = null;
+
+    if (high.ts > low.ts && high.ts < latestTs && pullback >= threshold) {
+        action = 'SELL';
+        pivot = high;
+    } else if (low.ts > high.ts && low.ts < latestTs && rebound >= threshold) {
+        action = 'BUY';
+        pivot = low;
+    }
+
+    const snapshot = {
+        rows,
+        high,
+        low,
+        current,
+        latestTs,
+        threshold,
+        pullback,
+        rebound,
+        sellTrigger,
+        buyTrigger,
+        action,
+        pivot,
+    };
+    reversalDebugCache[code] = snapshot;
+    return snapshot;
+}
+
+function minuteReversalCandidate(code, priceInfo) {
+    const snapshot = reversalSnapshot(code, priceInfo);
+    if (!snapshot || !snapshot.action) return null;
+    if (snapshot.action === 'SELL') {
+        return {
+            action: 'SELL',
+            key: `reversal:${signalReversalMinutes()}:${snapshot.threshold}:SELL:${snapshot.high.ts}:${snapshot.high.price}`,
+            label: '분봉반전',
+        };
+    }
+    if (snapshot.action === 'BUY') {
+        return {
+            action: 'BUY',
+            key: `reversal:${signalReversalMinutes()}:${snapshot.threshold}:BUY:${snapshot.low.ts}:${snapshot.low.price}`,
+            label: '분봉반전',
+        };
+    }
+    return null;
+}
+
+function mergeCandidateAction(currentAction, candidate) {
+    if (!candidate) return null;
+    if (!candidate.action) return currentAction || '';
+    if (!currentAction) return candidate.action;
+    return currentAction === candidate.action ? currentAction : null;
+}
+
+function isSignalTimeWindowOpen(hogaHour) {
+    const start = hhmmFromTimeValue(signalStartTimeValue());
+    const end = hhmmFromTimeValue(signalEndTimeValue());
+    if (!start && !end) return true;
+    const hhmm = hhmmFromHogaHour(hogaHour);
+    if (!hhmm) return false;
+    if (start && hhmm < start) return false;
+    if (end && hhmm > end) return false;
+    return true;
+}
+
+function changeCandidate(code, price) {
+    if (!price || !Number.isFinite(price.pct)) return null;
+
+    const threshold = signalPercentThreshold(code);
+    if (price.pct >= threshold) {
+        return { action: 'SELL', key: `change:${threshold}:SELL`, label: '등락률' };
+    }
+    if (price.pct <= -threshold) {
+        return { action: 'BUY', key: `change:${threshold}:BUY`, label: '등락률' };
+    }
+    return null;
+}
+
+function combinedOrderCandidate(code, hogaPressure, price, hogaHour) {
+    if (!isSignalTimeWindowOpen(hogaHour)) return null;
+
+    const pressureCandidate = signalOrderCandidate(hogaPressure);
+    const hasChangeRule = dailyRangePercent() > 0;
+    const hasReversalRule = signalReversalPercent() > 0;
+    if (!hasChangeRule && !hasReversalRule) {
+        return pressureCandidate && pressureCandidate.action ? pressureCandidate : null;
+    }
+
+    let action = '';
+    const keyParts = [];
+    const labels = [];
+
+    if (hasChangeRule) {
+        const pctCandidate = changeCandidate(code, price);
+        action = mergeCandidateAction(action, pctCandidate);
+        if (action === null) return null;
+        keyParts.push(pctCandidate.key);
+        labels.push(pctCandidate.label);
+    }
+
+    if (hasReversalRule) {
+        const reversalCandidate = minuteReversalCandidate(code, price);
+        action = mergeCandidateAction(action, reversalCandidate);
+        if (action === null) return null;
+        keyParts.push(reversalCandidate.key);
+        labels.push(reversalCandidate.label);
+    }
+
+    action = mergeCandidateAction(action, pressureCandidate);
+    if (action === null || !action) return null;
+    if (pressureCandidate.action) {
+        keyParts.push(pressureCandidate.key);
+        labels.push(pressureCandidate.label);
+    }
+
+    return {
+        action,
+        key: keyParts.join('+'),
+        label: labels.join('+'),
+    };
+}
+
+function isReversalOrderCandidate(candidate) {
+    return !!candidate && typeof candidate.key === 'string' && candidate.key.includes('reversal:');
+}
+
+function hogaClosedClockPauseReason(hogaHour) {
+    const hogaHhmm = hhmmFromHogaHour(hogaHour);
+    if (hogaHhmm !== 1600 && hogaHhmm !== 2000) return '';
+
+    const d = new Date();
+    const nowMinutes = d.getHours() * 60 + d.getMinutes();
+    const hogaMinutes = Math.floor(hogaHhmm / 100) * 60 + (hogaHhmm % 100);
+    const diff = Math.abs(nowMinutes - hogaMinutes);
+    return diff > 5 ? '호가시간 정지 주문보류' : '';
+}
+
+function orderPauseReason(hogaHour) {
+    const d = new Date();
+    if (d.getDay() === 0 || d.getDay() === 6) return '주말 주문보류';
+    const hhmm = d.getHours() * 100 + d.getMinutes();
+    if (hhmm < 802 || hhmm >= 2000) return '08:02-20:00 주문가능';
+    if (hhmm >= 850 && hhmm < 905) return '08:50-09:05 주문보류';
+    if (hhmm >= 1519 && hhmm < 1540) return '15:19-15:40 주문보류';
+    return hogaClosedClockPauseReason(hogaHour);
+}
+
+function orderPrice(o1, action, isFixedMode) {
+    if (isFixedMode) {
+        return action === 'BUY' ? parseNum(o1.bidp1) : parseNum(o1.askp1);
+    }
+    return action === 'BUY' ? parseNum(o1.askp1) : parseNum(o1.bidp1);
+}
+
+async function getHoldingQty(code) {
+    const data = await fetchJson('/holdings');
+    if (!data || !Array.isArray(data.stocks)) {
+        throw new Error('잔고 응답 확인 실패');
+    }
+    const normalize = v => String(v || '').replace(/\D/g, '').slice(-6);
+    const row = data.stocks.find(s => normalize(s.pdno) === normalize(code));
+    return row ? parseNum(row.hldg_qty) : 0;
+}
+
+function eligibleRecoveryEntry(code, priceInfo) {
+    const pct = signalRecoveryPercent();
+    if (pct <= 0 || !priceInfo || !Number.isFinite(priceInfo.prpr) || priceInfo.prpr <= 0) return null;
+
+    const reversal = minuteReversalCandidate(code, priceInfo);
+    if (!reversal) return null;
+
+    const entries = recoveryOrderEntries[code] || [];
+    return entries.find(entry => {
+        const recoveryAction = entry.action === 'SELL' ? 'BUY' : 'SELL';
+        if (reversal.action !== recoveryAction) return false;
+        const entryPct = entry.recoveryPct;
+        if (entry.action === 'SELL') {
+            return priceInfo.prpr <= entry.price * (1 - entryPct / 100);
+        }
+        return priceInfo.prpr >= entry.price * (1 + entryPct / 100);
+    }) || null;
+}
+
+async function maybeSubmitRecoveryOrder(symbol, o1, priceInfo, hogaHour) {
+    if (!signalOrderOn || !signalOrderAuto) return false;
+    if (!isSignalTarget(symbol.code)) return false;
+
+    const entry = eligibleRecoveryEntry(symbol.code, priceInfo);
+    if (!entry) return false;
+    if (recoveryOrderBusy[entry.id]) return true;
+
+    const pauseReason = orderPauseReason(hogaHour);
+    if (pauseReason) {
+        setSignalOrderStatus(symbol.code, `복구 ${pauseReason}`, 'warn');
+        return true;
+    }
+
+    const action = entry.action === 'SELL' ? 'BUY' : 'SELL';
+    recoveryOrderBusy[entry.id] = true;
+
+    try {
+        let qty = entry.qty;
+        if (action === 'SELL') {
+            const holdingQty = await getHoldingQty(symbol.code);
+            if (holdingQty < qty) {
+                setSignalOrderStatus(symbol.code, '복구 매도 보유수량 대기', 'warn');
+                delete recoveryOrderBusy[entry.id];
+                return true;
+            }
+        }
+
+        const price = orderPrice(o1, action, false);
+        if (!price) {
+            setSignalOrderStatus(symbol.code, '복구 1호가 없음', 'err');
+            delete recoveryOrderBusy[entry.id];
+            return true;
+        }
+
+        const result = await postJson('/orders/add', {
+            code: symbol.code,
+            name: symbol.name || symbol.code,
+            action,
+            qty,
+            price: String(price),
+            auto: true,
+            allow_duplicate: true,
+        });
+
+        if (result.result === 'ok') {
+            removeRecoveryOrderEntry(symbol.code, entry.id);
+            setSignalOrderStatus(symbol.code, `복구 ${action} 자동등록 ${fmt(price)}`, 'ok');
+        } else {
+            setSignalOrderStatus(symbol.code, `복구 주문실패 ${result.result || '-'}`, 'err');
+            delete recoveryOrderBusy[entry.id];
+        }
+    } catch (e) {
+        setSignalOrderStatus(symbol.code, '복구 주문오류 ' + e.message, 'err');
+        delete recoveryOrderBusy[entry.id];
+    }
+    return true;
+}
+
+async function maybeSubmitSignalOrder(symbol, o1, hogaPressure, priceInfo, hogaHour) {
+    if (!signalOrderOn) {
+        setSignalOrderStatus(symbol.code, '', '');
+        return;
+    }
+    if (!isSignalTarget(symbol.code)) {
+        setSignalOrderStatus(symbol.code, '', '');
+        return;
+    }
+
+    if (!isSignalTimeWindowOpen(hogaHour)) {
+        setSignalOrderStatus(symbol.code, '시간대기', 'warn');
+        return;
+    }
+
+    const candidate = combinedOrderCandidate(symbol.code, hogaPressure, priceInfo, hogaHour);
+    if (!candidate) {
+        delete signalOrderStatus[symbol.code];
+        delete signalOrderBusy[symbol.code];
+        setSignalOrderStatus(symbol.code, '감시중', '');
+        return;
+    }
+    const action = candidate.action;
+    const isReversalCandidate = isReversalOrderCandidate(candidate);
+    const reversalLock = signalReversalActionLock[symbol.code];
+
+    if (isReversalCandidate && reversalLock === action) {
+        setSignalOrderStatus(symbol.code, `${candidate.label} ${action} 유지중`, action === 'BUY' ? 'buy' : 'sell');
+        return;
+    }
+
+    if (signalOrderBusy[symbol.code] === candidate.key) {
+        renderSignalOrderStatus(symbol.code);
+        return;
+    }
+
+    const dailyLimit = signalDailyLimit();
+    if (dailyLimit > 0 && signalDailyCount(symbol.code) >= dailyLimit) {
+        setSignalOrderStatus(symbol.code, `일제한 ${dailyLimit}/${dailyLimit}`, 'warn');
+        return;
+    }
+
+    const pauseReason = orderPauseReason(hogaHour);
+    if (pauseReason) {
+        setSignalOrderStatus(symbol.code, pauseReason, 'warn');
+        return;
+    }
+
+    const holdingMode = signalHoldingMode();
+    const isLogMode = holdingMode === '0';
+    const isFixedMode = holdingMode === '1';
+    const isSplitMode = holdingMode === '2';
+    const needsHoldingCheck = isFixedMode || (isSplitMode && action === 'SELL');
+    signalOrderBusy[symbol.code] = candidate.key;
+    setSignalOrderStatus(symbol.code, `${candidate.label} ${action} ${isLogMode ? '로그확인' : '잔고확인'}`, action === 'BUY' ? 'buy' : 'sell');
+
+    try {
+        const holdingQty = needsHoldingCheck ? await getHoldingQty(symbol.code) : 0;
+        const requestedQty = signalOrderQty();
+        const qty = needsHoldingCheck && action === 'SELL' ? Math.min(requestedQty, holdingQty) : requestedQty;
+
+        if (isFixedMode && action === 'BUY' && holdingQty > 0) {
+            setSignalOrderStatus(symbol.code, '보유중 매수보류', 'warn');
+            return;
+        }
+        if (needsHoldingCheck && action === 'SELL' && holdingQty <= 0) {
+            setSignalOrderStatus(symbol.code, '미보유 매도보류', 'warn');
+            return;
+        }
+        if (qty <= 0) {
+            setSignalOrderStatus(symbol.code, '수량없음', 'warn');
+            return;
+        }
+
+        const price = orderPrice(o1, action, isFixedMode);
+        if (!price) {
+            setSignalOrderStatus(symbol.code, '1호가 없음', 'err');
+            return;
+        }
+
+        const orderAuto = !isLogMode && signalOrderAuto;
+        const result = await postJson('/orders/add', {
+            code: symbol.code,
+            name: symbol.name || symbol.code,
+            action,
+            qty,
+            price: String(price),
+            auto: orderAuto,
+            allow_duplicate: isSplitMode || isLogMode,
+        });
+
+        if (result.result === 'ok') {
+            incrementSignalDailyCount(symbol.code);
+            if (isReversalCandidate) signalReversalActionLock[symbol.code] = action;
+            if (orderAuto) {
+                addRecoveryOrderEntry(symbol, action, qty, price);
+            }
+            const modeLabel = isLogMode ? '로그등록' : orderAuto ? '자동등록' : '대기등록';
+            setSignalOrderStatus(
+                symbol.code,
+                `${candidate.label} ${action} ${modeLabel} ${fmt(price)}`,
+                'ok'
+            );
+        } else if (result.result === 'duplicate') {
+            if (isReversalCandidate) signalReversalActionLock[symbol.code] = action;
+            setSignalOrderStatus(symbol.code, `주문중 ${result.action || ''} ${result.status || ''}`.trim(), 'warn');
+        } else {
+            setSignalOrderStatus(symbol.code, `주문실패 ${result.result || '-'}`, 'err');
+            delete signalOrderBusy[symbol.code];
+        }
+    } catch (e) {
+        setSignalOrderStatus(symbol.code, '주문오류 ' + e.message, 'err');
+        delete signalOrderBusy[symbol.code];
+    }
+}
+
+async function processSignalOrders(symbol, o1, hogaPressure, priceInfo, hogaHour) {
+    const recoveryHandled = await maybeSubmitRecoveryOrder(symbol, o1, priceInfo, hogaHour);
+    if (!recoveryHandled) {
+        await maybeSubmitSignalOrder(symbol, o1, hogaPressure, priceInfo, hogaHour);
+    }
+}
+
+function renderCardShell(symbol) {
+    if (cardMode === 'summary') return `<div class="${cardClass(symbol.code)} loading" id="card-${symbol.code}">
+        <div class="card-head">
+            <div>
+                <div class="name-line">
+                    <div class="stock-name">${symbol.name || symbol.code}</div>
+                    <div class="flow-score flat" id="flow-score-${symbol.code}">수급 0</div>
+                </div>
+                <div class="summary-change flat" id="summary-change-${symbol.code}">${symbol.code}</div>
+            </div>
+        </div>
+        <div class="summary-pressure" id="pressure-${symbol.code}">
+            <div class="signal-icons">${signalIconsOnly(0, 0)}</div>
+            <div class="summary-pressure-value sig-none">압력 -</div>
+        </div>
+        <div id="hoga-${symbol.code}">${renderSummaryHoga({}, 0)}</div>
+        <div class="summary-time" id="hoga-time-${symbol.code}">호가 -</div>
+        <div class="daily-threshold" id="daily-threshold-${symbol.code}">등락기준 -</div>
+        <div class="recovery-order-status" id="recovery-order-${symbol.code}"></div>
+        <div class="signal-order-status" id="signal-order-${symbol.code}"></div>
+        <div class="card-error" id="error-${symbol.code}" style="display:none">조회 실패</div>
+    </div>`;
+
+    return `<div class="${cardClass(symbol.code)} loading" id="card-${symbol.code}">
+        <div class="card-head">
+            <div>
+                <div class="name-line">
+                    <div class="stock-name">${symbol.name || symbol.code}</div>
+                    <div class="flow-score flat" id="flow-score-${symbol.code}">수급 0</div>
+                </div>
+                <div class="stock-code">${symbol.code}</div>
+            </div>
+            <div class="rank">#${symbol.rank}</div>
+        </div>
+        <div class="price-row">
+            <div class="price flat" id="price-${symbol.code}">-</div>
+            <div class="change flat" id="change-${symbol.code}">조회 대기중</div>
+        </div>
+        <div class="signals" id="signals-${symbol.code}">
+            ${signalIcon('호가압력', 0, 0, '-')}
+            ${signalIcon('외국인', 0, 0, '-')}
+            ${signalIcon('기관', 0, 0, '-')}
+        </div>
+        <div class="mini-chart-wrap">
+            <canvas class="mini-chart" id="chart-${symbol.code}"></canvas>
+            <div class="mini-chart-empty" id="chart-empty-${symbol.code}">분봉 수집중</div>
+        </div>
+        <div id="hoga-${symbol.code}">${renderMiniHoga({}, 0)}</div>
+        <div class="meta-row">
+            <span id="hoga-time-${symbol.code}">호가 -</span>
+            <span>시총 ${fmtMarketCap(symbol.cap)}</span>
+        </div>
+        <div class="daily-threshold" id="daily-threshold-${symbol.code}">등락기준 -</div>
+        <div class="recovery-order-status" id="recovery-order-${symbol.code}"></div>
+        <div class="signal-order-status" id="signal-order-${symbol.code}"></div>
+        <div class="card-error" id="error-${symbol.code}" style="display:none">호가 조회 실패</div>
+    </div>`;
+}
+
+function renderCard(symbol, hoga, investor) {
+    const card = document.getElementById('card-' + symbol.code);
+    if (!card) return;
+    card.className = cardClass(symbol.code);
+    bindCardTargetClick(symbol);
+
+    if (!hoga || hoga.rt_cd !== '0' || !hoga.output1 || !hoga.output2) {
+        const error = document.getElementById('error-' + symbol.code);
+        if (error) error.style.display = 'block';
+        return;
+    }
+
+    const o1 = hoga.output1;
+    const o2 = hoga.output2;
+    const price = extractPrice(o2);
+    const totalAsk = parseNum(o1.total_askp_rsqn);
+    const totalBid = parseNum(o1.total_bidp_rsqn);
+    const ntby = parseNum(o1.ntby_aspr_rsqn);
+    const hogaPressure = computeHogaPressure(symbol.code, ntby, totalAsk, totalBid);
+    const inv = investorSignals(investor);
+    flowInputCache[symbol.code] = { ntby, totalAsk, totalBid, inv, hogaComponent: hogaPressure.component };
+    const flowScore = computeFlowScore(symbol.code, ntby, totalAsk, totalBid, inv);
+    const hour = o1.aspr_acpt_hour || '';
+    const time = hour.length >= 4
+        ? hour.slice(0, 2) + ':' + hour.slice(2, 4) + (hour.length >= 6 ? ':' + hour.slice(4, 6) : '')
+        : '-';
+
+    const priceEl = document.getElementById('price-' + symbol.code);
+    const changeEl = document.getElementById('change-' + symbol.code);
+    const summaryChangeEl = document.getElementById('summary-change-' + symbol.code);
+    const signalsEl = document.getElementById('signals-' + symbol.code);
+    const pressureEl = document.getElementById('pressure-' + symbol.code);
+    const hogaEl = document.getElementById('hoga-' + symbol.code);
+    const timeEl = document.getElementById('hoga-time-' + symbol.code);
+    const error = document.getElementById('error-' + symbol.code);
+
+    if (error) error.style.display = 'none';
+    if (priceEl) {
+        priceEl.className = 'price ' + price.cls;
+        priceEl.textContent = price.prpr.toLocaleString('ko-KR');
+    }
+    if (changeEl) {
+        changeEl.className = 'change ' + price.cls;
+        changeEl.textContent = price.changeText;
+    }
+    if (summaryChangeEl) {
+        summaryChangeEl.className = 'summary-change ' + price.cls;
+        summaryChangeEl.textContent = `${symbol.code}  ${price.rateText}`;
+    }
+    if (signalsEl) {
+        signalsEl.innerHTML = `
+            ${signalIcon('호가압력', hogaPressure.direction, hogaPressure.strength, hogaPressure.label)}
+            ${signalIcon('외국인', inv.frgn, signalStrength(inv.frgn, 0, 'investor'), inv.frgnLabel)}
+            ${signalIcon('기관', inv.orgn, signalStrength(inv.orgn, 0, 'investor'), inv.orgnLabel)}`;
+    }
+    if (pressureEl) {
+        const cls = hogaPressure.direction > 0 ? 'sig-buy' : hogaPressure.direction < 0 ? 'sig-sell' : 'sig-none';
+        pressureEl.innerHTML = `
+            <div class="signal-icons">${signalIconsOnly(hogaPressure.direction, hogaPressure.strength)}</div>
+            <div class="summary-pressure-value ${cls}">${hogaPressure.label}</div>`;
+    }
+    updateFlowScore(symbol.code, flowScore);
+    if (hogaEl) hogaEl.innerHTML = cardMode === 'summary'
+        ? renderSummaryHoga(o1, price.sdpr)
+        : renderMiniHoga(o1, price.sdpr);
+    if (cardMode === 'detail') bindChartClick(symbol);
+    if (timeEl) timeEl.textContent = '호가 ' + time;
+    renderSignalOrderStatus(symbol.code);
+    renderRecoveryOrderStatus(symbol.code);
+    recordPriceHistory(symbol.code, price, hour);
+    reversalSnapshot(symbol.code, price);
+    if (cardMode === 'detail') requestAnimationFrame(() => renderMiniChart(symbol.code));
+    processSignalOrders(symbol, o1, hogaPressure, price, hour);
+}
+
+async function renderSymbols() {
+    const grid = document.getElementById('grid');
+    const list = visibleSymbols();
+    grid.classList.toggle('summary', cardMode === 'summary');
+    grid.innerHTML = list.length
+        ? list.map(renderCardShell).join('')
+        : '<div class="loading-msg">매매대상을 선택하세요</div>';
+    updateSignalTargetsView();
+    list.forEach(bindCardTargetClick);
+    list.forEach(symbol => renderRecoveryOrderStatus(symbol.code));
+    list.forEach(symbol => requestAnimationFrame(() => ensureDailyThreshold(symbol.code)));
+    if (cardMode === 'detail') list.forEach(symbol => {
+        bindChartClick(symbol);
+        requestAnimationFrame(() => renderMiniChart(symbol.code));
+    });
+}
+
+async function setCardMode(mode) {
+    if (cardMode === mode) return;
+    cardMode = mode;
+    document.getElementById('btn-detail').classList.toggle('active', mode === 'detail');
+    document.getElementById('btn-summary').classList.toggle('active', mode === 'summary');
+    await renderSymbols();
+    if (autoOn) await refreshAll();
+}
+
+async function refreshOne(symbol, seq) {
+    try {
+        const hoga = await fetchJson(`/hoga?code=${encodeURIComponent(symbol.code)}`);
+        let investor = investorCache[symbol.code]?.data || null;
+        if (!investor) {
+            await delay(API_DELAY_MS);
+            investor = await fetchJson(`/investor?code=${encodeURIComponent(symbol.code)}`);
+            investorCache[symbol.code] = { ts: Date.now(), data: investor };
+        }
+        if (seq !== refreshSeq) return;
+        renderCard(symbol, hoga, investor);
+    } catch {
+        if (seq !== refreshSeq) return;
+        renderCard(symbol, null, null);
+    }
+}
+
+async function refreshAll() {
+    const list = visibleSymbols();
+    if (!list.length) return;
+    if (refreshing) return;
+    refreshing = true;
+    const seq = ++refreshSeq;
+    setStatus('갱신중...', true);
+
+    try {
+        for (let i = 0; i < list.length; i++) {
+            if (seq !== refreshSeq) return;
+            await refreshOne(list[i], seq);
+            await delay(API_DELAY_MS);
+        }
+        if (seq === refreshSeq) setStatus(`${nowLabel()} 갱신 완료`, autoOn);
+    } finally {
+        refreshing = false;
+    }
+}
+
+async function reloadSymbols() {
+    stopAuto();
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '<div class="loading-msg">시가총액 랭킹 로딩 중...</div>';
+    setStatus('랭킹 파일 읽는 중...', false);
+    try {
+        symbols = await loadSymbols();
+        if (!symbols.length) {
+            grid.innerHTML = '<div class="loading-msg">시가총액 랭킹 파일에 표시할 종목이 없습니다</div>';
+            setStatus('랭킹 없음', false);
+            return;
+        }
+        await renderSymbols();
+        setStatus('새로고침 또는 자동갱신 대기', false);
+        if (autoOn) startAuto();
+    } catch {
+        grid.innerHTML = '<div class="loading-msg">시가총액 랭킹 파일을 읽을 수 없습니다</div>';
+        setStatus('랭킹 파일 오류', false);
+    }
+}
+
+function refreshDailyThresholdsIfDateChanged() {
+    const key = todayKey();
+    if (key === dailyThresholdDateKey) return;
+    dailyThresholdDateKey = key;
+    dailyChartCache = {};
+    dailyThresholdCache = {};
+    priceHistoryCache = {};
+    reversalDebugCache = {};
+    signalDailyCounts = {};
+    signalReversalActionLock = {};
+    recoveryOrderEntries = {};
+    recoveryOrderBusy = {};
+    visibleSymbols().forEach(symbol => renderRecoveryOrderStatus(symbol.code));
+    visibleSymbols().forEach(symbol => requestAnimationFrame(() => ensureDailyThreshold(symbol.code)));
+    if (cardMode === 'detail') {
+        visibleSymbols().forEach(symbol => {
+            requestAnimationFrame(() => renderMiniChart(symbol.code));
+        });
+    }
+}
+
+function startDailyThresholdClock() {
+    if (dailyThresholdTimer) clearInterval(dailyThresholdTimer);
+    dailyThresholdTimer = setInterval(refreshDailyThresholdsIfDateChanged, 60000);
+}
+
+async function autoRefreshLoop() {
+    if (!autoOn) return;
+    await refreshAll();
+    if (autoOn) autoTimer = setTimeout(autoRefreshLoop, 0);
+}
+
+function startAuto() {
+    stopAuto();
+    document.getElementById('live-dot').classList.add('on');
+    autoTimer = setTimeout(autoRefreshLoop, 0);
+}
+
+function stopAuto() {
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = null;
+}
+
+function toggleAuto() {
+    autoOn = !autoOn;
+    const btn = document.getElementById('btn-auto');
+    btn.classList.toggle('active', autoOn);
+    btn.textContent = autoOn ? '자동갱신 ON' : '자동갱신 OFF';
+    document.getElementById('live-dot').classList.toggle('on', autoOn);
+    if (autoOn) startAuto();
+    else stopAuto();
+}
+
+function toggleSignalOrder() {
+    signalOrderOn = !signalOrderOn;
+    const btn = document.getElementById('btn-signal-order');
+    btn.classList.toggle('active', signalOrderOn);
+    btn.textContent = signalOrderOn ? '주문 ON' : '주문 OFF';
+    if (!signalOrderOn) {
+        signalOrderBusy = {};
+        signalReversalActionLock = {};
+        signalOrderStatus = {};
+        symbols.forEach(s => setSignalOrderStatus(s.code, '', ''));
+    }
+    renderSymbols().then(() => { if (autoOn) refreshAll(); });
+}
+
+function toggleSignalExec() {
+    signalOrderAuto = !signalOrderAuto;
+    const btn = document.getElementById('btn-signal-exec');
+    btn.classList.toggle('active', signalOrderAuto);
+    btn.textContent = signalOrderAuto ? '자동' : '대기';
+}
+
+updateSignalTargetsView();
+startDailyThresholdClock();
+reloadSymbols();
+</script>
+</body>
+</html>
