@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta name="description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<link rel="canonical" href="https://finance.suaveforge.com/">
+<meta property="og:title" content="설정 · SuaveForge FINANCE">
+<meta property="og:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta property="og:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<meta property="og:url" content="https://finance.suaveforge.com/">
+<meta property="og:site_name" content="SuaveForge FINANCE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="설정 · SuaveForge FINANCE">
+<meta name="twitter:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta name="twitter:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<script async src="https://sitehub.suaveforge.com/analytics-loader.js" data-sitehub-project="p07"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>설정</title>
+<script src="nav.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 24px; }
+
+h2 { color: #fff; font-size: 16px; margin-bottom: 14px; }
+
+.section {
+    background: #1a1a2e; border: 1px solid #2a2a3e;
+    border-radius: 12px; padding: 20px 22px; margin-bottom: 18px;
+    max-width: 520px;
+}
+
+label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; margin-top: 14px; }
+label:first-of-type { margin-top: 0; }
+
+input[type="text"], input[type="password"] {
+    width: 100%; background: #0f0f1a;
+    border: 1px solid #444; border-radius: 6px;
+    color: #fff; padding: 10px 12px; font-size: 14px;
+    outline: none;
+}
+input:focus { border-color: #7eb8f7; }
+
+.row { display: flex; gap: 8px; margin-top: 14px; }
+
+button {
+    background: #2a2a3e; color: #ccc;
+    border: 1px solid #444; padding: 9px 16px;
+    border-radius: 6px; cursor: pointer; font-size: 13px;
+    touch-action: manipulation;
+}
+button:hover { background: #3a3a5e; color: #fff; }
+button:active { opacity: 0.75; }
+.btn-primary { background: #2a3a5e; color: #7eb8f7; border-color: #7eb8f7; }
+.btn-primary:hover { background: #3a4a7e; }
+.btn-danger  { background: #3a1a1a; color: #ff9999; border-color: #883333; }
+.btn-danger:hover { background: #5a2020; }
+
+.status {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: #888; margin-top: 12px;
+}
+.dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: #555; }
+.dot.ok  { background: #44cc44; box-shadow: 0 0 5px #44cc44; }
+.dot.err { background: #cc4444; }
+
+.auth-badge {
+    display: inline-block; font-size: 12px;
+    padding: 3px 10px; border-radius: 10px; margin-top: 10px;
+}
+.auth-badge.set   { background: rgba(68,204,68,0.15); color: #88ee88; border: 1px solid #336633; }
+.auth-badge.unset { background: rgba(204,68,68,0.15); color: #ff9999; border: 1px solid #883333; }
+
+
+#msg {
+    font-size: 13px; margin-top: 10px; min-height: 18px;
+    color: #88ee88;
+}
+#msg.err { color: #ff9999; }
+</style>
+</head>
+<body>
+
+<!-- 서버 설정 -->
+<div class="section">
+    <h2>서버 설정</h2>
+
+    <label>API 서버</label>
+    <input id="api-server" type="text" placeholder="https://domain.com/api">
+
+    <label>데이터 서버</label>
+    <input id="data-server" type="text" placeholder="https://domain.com/data">
+
+    <div class="row">
+        <button class="btn-primary" onclick="saveServer()">저장</button>
+        <button onclick="testServer()">연결 테스트</button>
+    </div>
+
+    <div class="status">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">-</span>
+    </div>
+</div>
+
+<!-- 인증 키 -->
+<div class="section">
+    <h2>인증 키</h2>
+
+    <label>새 인증 키</label>
+    <input id="auth-input" type="password" placeholder="인증 키 입력">
+
+    <div class="row">
+        <button class="btn-primary" onclick="saveAuth()">저장</button>
+        <button class="btn-danger"  onclick="clearAuth()">초기화</button>
+    </div>
+
+    <div id="auth-status" class="auth-badge unset">설정 안 됨</div>
+    <div id="msg"></div>
+</div>
+
+
+<script>
+const KEY_AUTH   = 'trade_auth_key';
+const KEY_API    = 'trade_server';
+const KEY_DATA   = 'data_server';
+
+const DEFAULT_API  = 'https://api-finance.suaveforge.com:18465/api';
+const DEFAULT_DATA = 'https://finance.suaveforge.com/data';
+
+function load() {
+    document.getElementById('api-server').value  = localStorage.getItem(KEY_API)  || DEFAULT_API;
+    document.getElementById('data-server').value = localStorage.getItem(KEY_DATA) || DEFAULT_DATA;
+    updateAuthBadge();
+}
+
+function updateAuthBadge() {
+    const key = localStorage.getItem(KEY_AUTH);
+    const el  = document.getElementById('auth-status');
+    if (key) {
+        el.className = 'auth-badge set';
+        el.textContent = '설정됨 (' + '*'.repeat(Math.min(key.length, 8)) + ')';
+    } else {
+        el.className = 'auth-badge unset';
+        el.textContent = '설정 안 됨';
+    }
+}
+
+function showMsg(text, isErr) {
+    const el = document.getElementById('msg');
+    el.textContent = text;
+    el.className = isErr ? 'err' : '';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.textContent = ''; el.className = ''; }, 3000);
+}
+
+function saveServer() {
+    const api  = document.getElementById('api-server').value.trim().replace(/\/$/, '');
+    const data = document.getElementById('data-server').value.trim().replace(/\/$/, '');
+    if (!api || !data) { showMsg('서버 주소를 모두 입력하세요.', true); return; }
+    localStorage.setItem(KEY_API,  api);
+    localStorage.setItem(KEY_DATA, data);
+    showMsg('서버 설정이 저장되었습니다.');
+}
+
+async function testServer() {
+    const api = document.getElementById('api-server').value.trim().replace(/\/$/, '');
+    const dot = document.getElementById('conn-dot');
+    const txt = document.getElementById('conn-text');
+    dot.className = 'dot';
+    txt.textContent = '확인 중...';
+    try {
+        const r = await fetch(api + '/status', { signal: AbortSignal.timeout(3000) });
+        const j = await r.json();
+        if (j.status === 'ok') {
+            dot.className = 'dot ok'; txt.textContent = '서버 연결됨';
+        } else {
+            dot.className = 'dot err'; txt.textContent = '응답 이상: ' + (j.status || '?');
+        }
+    } catch (e) {
+        dot.className = 'dot err'; txt.textContent = '연결 실패';
+    }
+}
+
+function saveAuth() {
+    const val = document.getElementById('auth-input').value.trim();
+    if (!val) { showMsg('인증 키를 입력하세요.', true); return; }
+    localStorage.setItem(KEY_AUTH, val);
+    document.getElementById('auth-input').value = '';
+    updateAuthBadge();
+    showMsg('인증 키가 저장되었습니다.');
+}
+
+function clearAuth() {
+    localStorage.removeItem(KEY_AUTH);
+    document.getElementById('auth-input').value = '';
+    updateAuthBadge();
+    showMsg('인증 키가 초기화되었습니다.');
+}
+
+load();
+</script>
+</body>
+</html>
