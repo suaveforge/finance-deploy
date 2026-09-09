@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta name="description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<link rel="canonical" href="https://finance.suaveforge.com/pending.html">
+<meta property="og:title" content="미체결 주문 · SuaveForge FINANCE">
+<meta property="og:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta property="og:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<meta property="og:url" content="https://finance.suaveforge.com/pending.html">
+<meta property="og:site_name" content="SuaveForge FINANCE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="미체결 주문 · SuaveForge FINANCE">
+<meta name="twitter:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta name="twitter:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<script async src="https://sitehub.suaveforge.com/analytics-loader.js" data-sitehub-project="p07"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미체결 주문</title>
+<script src="auth.js"></script>
+<script src="nav.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 20px; }
+
+h1 { color: #fff; font-size: 22px; margin-bottom: 14px; }
+
+.toolbar {
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap; margin-bottom: 18px;
+}
+button {
+    background: #2a2a3e; color: #ccc;
+    border: 1px solid #444; padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; font-size: 13px;
+    touch-action: manipulation;
+}
+button:hover { background: #3a3a5e; color: #fff; }
+button:active { opacity: 0.75; }
+.btn-sm     { padding: 5px 10px; font-size: 12px; }
+.btn-cancel { background: #3a1a1a; border-color: #883333; color: #ff9999; }
+.btn-cancel:hover  { background: #5a2020; color: #ffbbbb; }
+.btn-modify { background: #1a2a1a; border-color: #338833; color: #99ee99; }
+.btn-modify:hover  { background: #203a20; color: #bbffbb; }
+.btn-buy  { color: #ff9999; }
+.btn-sell { color: #9999ff; }
+
+/* 뱃지 */
+.badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 4px; font-size: 12px; font-weight: bold;
+}
+.badge-buy  { background: #3a1a1a; color: #ff9999; border: 1px solid #883333; }
+.badge-sell { background: #1a1a3a; color: #9999ff; border: 1px solid #334488; }
+
+/* 테이블 (데스크탑) */
+.desktop-view { display: block; }
+.mobile-view  { display: none; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th {
+    background: #1a1a2e; color: #888;
+    padding: 10px; text-align: right;
+    border-bottom: 1px solid #333; white-space: nowrap;
+}
+thead th:nth-child(1),
+thead th:nth-child(2) { text-align: left; }
+tbody tr { border-bottom: 1px solid #1a1a28; }
+tbody tr:hover { background: #1a1a30; }
+td { padding: 8px 10px; text-align: right; vertical-align: middle; }
+td:nth-child(1),
+td:nth-child(2) { text-align: left; }
+.name { font-weight: bold; color: #fff; }
+.code { color: #555; font-size: 11px; margin-top: 2px; }
+.time { color: #888; font-size: 12px; }
+
+/* 카드 (모바일) */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+}
+.card {
+    background: #1a1a2e; border: 1px solid #2a2a3e;
+    border-radius: 10px; padding: 14px 16px;
+}
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.card-name { font-weight: bold; color: #fff; font-size: 16px; }
+.card-code { color: #555; font-size: 12px; margin-top: 3px; }
+.card-rows { display: flex; flex-direction: column; gap: 6px; font-size: 13px; margin-bottom: 12px; }
+.card-row  { display: flex; justify-content: space-between; }
+.card-row .lbl { color: #666; }
+.card-row .val { color: #ccc; font-weight: bold; }
+.card-btns { display: flex; gap: 8px; }
+.card-btns button { flex: 1; padding: 10px; font-size: 14px; font-weight: bold; }
+
+/* 자동새로고침 표시 */
+.refresh-info { font-size: 12px; color: #555; margin-left: auto; }
+
+.empty { color: #444; font-size: 15px; padding: 40px 0; text-align: center; }
+
+/* 모달 */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 100;
+    align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+    background: #1a1a2e; border: 1px solid #444;
+    border-radius: 12px; padding: 24px;
+    width: 320px; max-width: calc(100vw - 32px);
+}
+.modal-title { font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 16px; }
+.modal-info  { font-size: 14px; color: #999; line-height: 1.9; margin-bottom: 18px; }
+.modal-info b { color: #fff; }
+.modal-label { font-size: 12px; color: #666; margin-bottom: 4px; }
+.modal-input {
+    width: 100%; background: #0f0f1a;
+    border: 1px solid #444; border-radius: 6px;
+    color: #fff; padding: 12px; font-size: 18px;
+    margin-bottom: 12px; outline: none;
+}
+.modal-input:focus { border-color: #7eb8f7; }
+.modal-btns { display: flex; gap: 10px; }
+.modal-btns button { flex: 1; padding: 12px; font-size: 15px; font-weight: bold; }
+
+/* 토스트 */
+#toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #2a2a3e; border: 1px solid #555;
+    color: #fff; padding: 12px 22px; border-radius: 8px;
+    font-size: 14px; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 200;
+    white-space: nowrap; max-width: calc(100vw - 32px); text-align: center;
+}
+#toast.show     { opacity: 1; }
+#toast.show.ok  { border-color: #44cc44; color: #88ee88; }
+#toast.show.err { border-color: #cc4444; color: #ff9999; }
+
+@media (max-width: 768px) {
+    .desktop-view { display: none; }
+    .mobile-view  { display: block; }
+    body { padding: 12px; }
+}
+</style>
+</head>
+<body>
+
+<span class="refresh-info" id="refresh-info" style="font-size:12px;color:#555;margin-bottom:18px;display:block"></span>
+
+<h1>미체결 주문</h1>
+
+<!-- 데스크탑 테이블 -->
+<div class="desktop-view">
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align:left">종목</th>
+                <th style="text-align:left">구분</th>
+                <th>거래소</th>
+                <th>주문시각</th>
+                <th>주문종류</th>
+                <th>주문단가</th>
+                <th>주문수량</th>
+                <th>체결수량</th>
+                <th>취소가능</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="tbl-body">
+            <tr><td colspan="10" class="empty">데이터를 불러오는 중...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- 모바일 카드 -->
+<div class="mobile-view">
+    <div class="card-grid" id="card-grid">
+        <div class="empty">데이터를 불러오는 중...</div>
+    </div>
+</div>
+
+<!-- 정정 모달 -->
+<div class="modal-overlay" id="modal">
+    <div class="modal-box">
+        <div class="modal-title">주문 정정</div>
+        <div class="modal-info" id="m-info"></div>
+        <div class="modal-label">새 수량</div>
+        <input class="modal-input" id="m-qty" type="number" min="1" placeholder="수량" inputmode="numeric">
+        <div class="modal-label">새 지정가</div>
+        <input class="modal-input" id="m-price" type="number" min="1" placeholder="가격" inputmode="numeric">
+        <div class="modal-btns">
+            <button class="btn-modify" id="m-confirm">정정 실행</button>
+            <button onclick="closeModal()">취소</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SERVER = localStorage.getItem('trade_server') || 'https://api-finance.suaveforge.com:18465/api';
+
+const fmtNum = n => Number(n).toLocaleString('ko-KR');
+const fmtTime = t => t.length >= 6 ? t.slice(0,2)+':'+t.slice(2,4)+':'+t.slice(4,6) : t;
+
+function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ── 정정 모달 ────────────────────────────────────────
+let modifyTarget = null;
+
+function openModify(order) {
+    modifyTarget = order;
+    document.getElementById('m-info').innerHTML =
+        `종목: <b>${order.prdt_name} (${order.pdno})</b><br>` +
+        `현재 주문가: <b>${fmtNum(order.ord_unpr)}원</b> / 잔량: <b>${fmtNum(order.psbl_qty)}주</b>`;
+    document.getElementById('m-qty').value   = order.psbl_qty;
+    document.getElementById('m-price').value = order.ord_unpr;
+    document.getElementById('modal').classList.add('show');
+    setTimeout(() => document.getElementById('m-price').focus(), 50);
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+    modifyTarget = null;
+}
+
+document.getElementById('m-confirm').onclick = async () => {
+    if (!modifyTarget) return;
+    const qty   = document.getElementById('m-qty').value.trim();
+    const price = document.getElementById('m-price').value.trim();
+    if (!qty || Number(qty) <= 0)  { toast('수량을 입력하세요', 'err'); return; }
+    if (!price || Number(price) <= 0) { toast('가격을 입력하세요', 'err'); return; }
+
+    const { ord_gno_brno, odno, prdt_name, excg_id_dvsn_cd } = modifyTarget;
+    closeModal();
+
+    try {
+        const r = await fetch(SERVER + '/modify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgno: ord_gno_brno, orno: odno, qty, price, excg_cd: excg_id_dvsn_cd })
+        });
+        const j = await r.json();
+        if (j.ok) {
+            toast(`${prdt_name} 정정 완료`, 'ok');
+            setTimeout(loadPending, 800);
+        } else {
+            toast(`정정 실패 (rt_cd: ${j.rt_cd})`, 'err');
+        }
+    } catch { toast('서버 연결 오류', 'err'); }
+};
+
+document.getElementById('modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── 취소 ────────────────────────────────────────────
+async function cancelOrder(order) {
+    if (!confirm(`${order.prdt_name} ${fmtNum(order.psbl_qty)}주 주문을 취소할까요?`)) return;
+
+    try {
+        const r = await fetch(SERVER + '/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgno: order.ord_gno_brno, orno: order.odno, qty: order.psbl_qty, excg_cd: order.excg_id_dvsn_cd })
+        });
+        const j = await r.json();
+        if (j.ok) {
+            toast(`${order.prdt_name} 취소 완료`, 'ok');
+            setTimeout(loadPending, 800);
+        } else {
+            toast(`취소 실패 (rt_cd: ${j.rt_cd})`, 'err');
+        }
+    } catch { toast('서버 연결 오류', 'err'); }
+}
+
+// ── 미체결 로드 ──────────────────────────────────────
+let orders = [];
+
+async function loadPending() {
+    try {
+        const r = await fetch(SERVER + '/pending');
+        orders = await r.json();
+
+        const now = new Date();
+        document.getElementById('refresh-info').textContent =
+            `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')} 기준`;
+
+        renderTable(orders);
+        renderCards(orders);
+    } catch {
+        document.getElementById('tbl-body').innerHTML =
+            '<tr><td colspan="10" class="empty">서버 연결 오류</td></tr>';
+        document.getElementById('card-grid').innerHTML =
+            '<div class="empty">서버 연결 오류</div>';
+    }
+}
+
+function renderTable(list) {
+    const tbody = document.getElementById('tbl-body');
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty">미체결 주문 없음</td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.map((o, i) => {
+        const isBuy = o.sll_buy_dvsn_cd === '02';
+        const badgeCls = isBuy ? 'badge-buy' : 'badge-sell';
+        const buySellName = isBuy ? '매수' : '매도';
+        return `<tr>
+            <td><div class="name">${o.prdt_name}</div><div class="code">${o.pdno}</div></td>
+            <td><span class="badge ${badgeCls}">${buySellName}</span></td>
+            <td style="color:#888;font-size:12px">${o.excg_id_dvsn_name}</td>
+            <td class="time">${fmtTime(o.ord_tmd)}</td>
+            <td style="color:#888;font-size:12px">${o.ord_dvsn_name}</td>
+            <td>${fmtNum(o.ord_unpr)}</td>
+            <td>${fmtNum(o.ord_qty)}</td>
+            <td>${fmtNum(o.tot_ccld_qty)}</td>
+            <td><b>${fmtNum(o.psbl_qty)}</b></td>
+            <td style="white-space:nowrap">
+                <button class="btn-sm btn-modify" onclick="openModify(orders[${i}])">정정</button>
+                <button class="btn-sm btn-cancel" onclick="cancelOrder(orders[${i}])">취소</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function renderCards(list) {
+    const grid = document.getElementById('card-grid');
+    if (!list.length) {
+        grid.innerHTML = '<div class="empty">미체결 주문 없음</div>';
+        return;
+    }
+    grid.innerHTML = list.map((o, i) => {
+        const isBuy = o.sll_buy_dvsn_cd === '02';
+        const badgeCls = isBuy ? 'badge-buy' : 'badge-sell';
+        const buySellName = isBuy ? '매수' : '매도';
+        return `<div class="card">
+            <div class="card-top">
+                <div>
+                    <div class="card-name">${o.prdt_name}</div>
+                    <div class="card-code">${o.pdno}</div>
+                </div>
+                <span class="badge ${badgeCls}">${buySellName}</span>
+            </div>
+            <div class="card-rows">
+                <div class="card-row"><span class="lbl">거래소</span><span class="val">${o.excg_id_dvsn_name}</span></div>
+                <div class="card-row"><span class="lbl">주문시각</span><span class="val">${fmtTime(o.ord_tmd)}</span></div>
+                <div class="card-row"><span class="lbl">주문구분</span><span class="val">${o.ord_dvsn_name}</span></div>
+                <div class="card-row"><span class="lbl">주문단가</span><span class="val">${fmtNum(o.ord_unpr)}원</span></div>
+                <div class="card-row"><span class="lbl">주문수량</span><span class="val">${fmtNum(o.ord_qty)}주</span></div>
+                <div class="card-row"><span class="lbl">체결수량</span><span class="val">${fmtNum(o.tot_ccld_qty)}주</span></div>
+                <div class="card-row"><span class="lbl">취소가능</span><span class="val">${fmtNum(o.psbl_qty)}주</span></div>
+                ${o.rvse_cncl_dvsn_name ? `<div class="card-row"><span class="lbl">정정취소</span><span class="val">${o.rvse_cncl_dvsn_name}</span></div>` : ''}
+            </div>
+            <div class="card-btns">
+                <button class="btn-modify" onclick="openModify(orders[${i}])">정정</button>
+                <button class="btn-cancel" onclick="cancelOrder(orders[${i}])">취소</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── 자동 새로고침 (10초) ──────────────────────────────
+loadPending();
+setInterval(loadPending, 10000);
+</script>
+</body>
+</html>
