@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta name="description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<link rel="canonical" href="https://finance.suaveforge.com/symbols.html">
+<meta property="og:title" content="종목 순위 · SuaveForge FINANCE">
+<meta property="og:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta property="og:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<meta property="og:url" content="https://finance.suaveforge.com/symbols.html">
+<meta property="og:site_name" content="SuaveForge FINANCE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="종목 순위 · SuaveForge FINANCE">
+<meta name="twitter:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta name="twitter:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<script async src="https://sitehub.suaveforge.com/analytics-loader.js" data-sitehub-project="p07"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>종목 순위</title>
+<script src="auth.js"></script>
+<script src="nav.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 16px; }
+
+/* ── 탭 ── */
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.tab-btn {
+    background: #1a1a2e; color: #888;
+    border: 1px solid #333; padding: 8px 18px;
+    border-radius: 6px; cursor: pointer; font-size: 14px;
+    touch-action: manipulation;
+}
+.tab-btn:hover { color: #fff; background: #2a2a3e; }
+.tab-btn.active { background: #2a3a5e; color: #7eb8f7; border-color: #7eb8f7; }
+
+/* ── 정렬 선택 ── */
+.sort-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.sort-bar select {
+    background: #1a1a2e; color: #ccc;
+    border: 1px solid #444; padding: 7px 12px;
+    border-radius: 6px; font-size: 13px; cursor: pointer;
+}
+.sort-bar select:focus { outline: none; border-color: #7eb8f7; }
+
+/* ── 툴바 ── */
+.toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+
+/* ── 버튼 공통 ── */
+button {
+    background: #2a2a3e; color: #ccc;
+    border: 1px solid #444; padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; font-size: 13px;
+    touch-action: manipulation;
+}
+button:hover  { background: #3a3a5e; color: #fff; }
+button:active { opacity: 0.75; }
+.btn-sm  { padding: 5px 10px; font-size: 12px; }
+.btn-ref { background: #1a2a1a; border-color: #336633; color: #88cc88; }
+.btn-ref:hover { background: #203020; color: #aaeaaa; }
+.btn-buy { background: #3a1a1a; border-color: #883333; color: #ff9999; }
+.btn-buy:hover { background: #5a2020; color: #ffbbbb; }
+
+/* ── 색상 ── */
+.up   { color: #e05555; }
+.down { color: #5588e0; }
+.flat { color: #777; }
+
+/* ════════════════════════════════
+   데스크탑: 테이블
+════════════════════════════════ */
+.desktop-view { display: block; }
+.mobile-view  { display: none; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th {
+    background: #1a1a2e; color: #888;
+    padding: 10px; text-align: right;
+    cursor: pointer; user-select: none;
+    border-bottom: 1px solid #333; white-space: nowrap;
+}
+thead th:first-child,
+thead th:nth-child(2) { text-align: left; }
+thead th:hover { color: #fff; }
+thead th.sorted { color: #7eb8f7; }
+tbody tr { border-bottom: 1px solid #1a1a28; }
+tbody tr:hover { background: #1a1a30; }
+td { padding: 8px 10px; text-align: right; vertical-align: middle; }
+td:first-child, td:nth-child(2) { text-align: left; }
+.rank      { color: #555; }
+.name      { font-weight: bold; color: #fff; }
+.name-link { cursor: pointer; }
+.name-link:hover .name, .name-link:hover .card-name { color: #7eb8f7; }
+.code      { color: #555; font-size: 11px; margin-top: 2px; }
+.price-val { font-weight: bold; color: #fff; font-size: 15px; }
+.cap       { color: #f0c040; }
+.vol       { color: #999; }
+.fin       { color: #88aacc; }
+
+/* ════════════════════════════════
+   모바일: 카드
+════════════════════════════════ */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+}
+.card {
+    background: #1a1a2e; border: 1px solid #2a2a40;
+    border-radius: 10px; padding: 14px 16px;
+}
+.card-top {
+    display: flex; justify-content: space-between;
+    align-items: flex-start; margin-bottom: 10px;
+}
+.card-name { font-weight: bold; color: #fff; font-size: 16px; }
+.card-code { color: #555; font-size: 12px; margin-top: 3px; }
+.card-rank {
+    background: #0f0f1a; color: #666;
+    font-size: 12px; padding: 3px 8px;
+    border-radius: 12px; border: 1px solid #2a2a3e;
+    white-space: nowrap;
+}
+.card-price-row {
+    display: flex; align-items: baseline;
+    gap: 10px; margin-bottom: 10px;
+}
+.card-price { font-size: 22px; font-weight: bold; color: #fff; }
+.card-change { font-size: 14px; }
+.card-meta {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    font-size: 12px; color: #888; margin-bottom: 12px;
+}
+.card-meta span b { color: #bbb; }
+.card-btns { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.card-btns button { padding: 12px; font-size: 15px; border-radius: 8px; font-weight: bold; }
+
+/* ── 반응형 ── */
+@media (max-width: 768px) {
+    body { padding: 12px; }
+    .desktop-view { display: none; }
+    .mobile-view  { display: block; }
+}
+
+/* ════════════════════════════════
+   모달
+════════════════════════════════ */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75); z-index: 100;
+    align-items: center; justify-content: center; padding: 16px;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+    background: #1a1a2e; border: 1px solid #444;
+    border-radius: 12px; padding: 24px;
+    width: 100%; max-width: 380px;
+}
+.modal-title { font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 16px; }
+.modal-info  { font-size: 14px; color: #999; line-height: 1.9; margin-bottom: 18px; }
+.modal-info b { color: #fff; }
+.modal-input {
+    width: 100%; background: #0f0f1a;
+    border: 1px solid #444; border-radius: 6px;
+    color: #fff; padding: 12px; font-size: 18px;
+    margin-bottom: 18px; outline: none;
+}
+.modal-input:focus { border-color: #7eb8f7; }
+.modal-btns { display: flex; gap: 10px; }
+.modal-btns button { flex: 1; padding: 12px; font-size: 15px; font-weight: bold; }
+
+/* ── 토스트 ── */
+#toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #2a2a3e; border: 1px solid #555;
+    color: #fff; padding: 12px 22px; border-radius: 8px;
+    font-size: 14px; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 200;
+    white-space: nowrap; max-width: calc(100vw - 32px); text-align: center;
+}
+#toast.show     { opacity: 1; }
+#toast.show.ok  { border-color: #44cc44; color: #88ee88; }
+#toast.show.err { border-color: #cc4444; color: #ff9999; }
+</style>
+</head>
+<body>
+
+
+<!-- 탭 -->
+<div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('cap')">시가총액</button>
+    <button class="tab-btn" onclick="switchTab('vol')">거래량</button>
+    <button class="tab-btn" onclick="switchTab('financial')">재무비율</button>
+    <button class="tab-btn" onclick="switchTab('dividend')">배당</button>
+    <button class="tab-btn" onclick="switchTab('profit_asset')">수익자산지표</button>
+    <button class="tab-btn" onclick="switchTab('quote_balance')">호가잔량</button>
+    <button class="tab-btn" onclick="switchTab('fluctuation')">등락률</button>
+</div>
+
+<!-- 정렬 선택 드롭다운 (해당 탭에서만 표시) -->
+<div class="sort-bar" id="sort-bar" style="display:none">
+    <span style="color:#888;font-size:13px">정렬 기준:</span>
+    <select id="sort-select" onchange="onSortChange()"></select>
+</div>
+
+<!-- 데스크탑: 테이블 -->
+<div class="desktop-view">
+<table>
+    <thead id="thead"><tr></tr></thead>
+    <tbody id="tbody"></tbody>
+</table>
+</div>
+
+<!-- 모바일: 카드 -->
+<div class="mobile-view">
+    <div class="card-grid" id="card-grid"></div>
+</div>
+
+<!-- 주문 모달 -->
+<div class="modal-overlay" id="modal">
+    <div class="modal-box">
+        <div class="modal-title" id="m-title"></div>
+        <div class="modal-info"  id="m-info"></div>
+        <input class="modal-input" id="m-qty"   type="number" min="1" placeholder="수량 입력" inputmode="numeric">
+        <input class="modal-input" id="m-price" type="number" min="0" placeholder="지정가 (비우면 시장가)" inputmode="numeric" style="margin-top:-8px">
+        <div class="modal-btns">
+            <button id="m-confirm">확인</button>
+            <button onclick="closeModal()">취소</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let SERVER = localStorage.getItem('trade_server') || 'https://api-finance.suaveforge.com:18465/api';
+const DATA_SERVER = localStorage.getItem('data_server') || 'https://finance.suaveforge.com/data';
+let rows = [], sortKey = 'ranking', sortAsc = true;
+let currentTab = 'cap';
+let modalAction = null;
+
+// 정렬 선택이 있는 탭의 옵션 정의
+const SORT_OPTIONS = {
+    financial: [
+        { value: '7',  label: '수익성 분석' },
+        { value: '11', label: '안정성 분석' },
+        { value: '15', label: '성장성 분석' },
+        { value: '20', label: '활동성 분석' },
+    ],
+    profit_asset: [
+        { value: '0', label: '매출 총이익' },
+        { value: '1', label: '영업이익' },
+        { value: '2', label: '경상이익' },
+        { value: '3', label: '당기순이익' },
+        { value: '4', label: '자산총계' },
+        { value: '5', label: '부채총계' },
+        { value: '6', label: '자본총계' },
+    ],
+    quote_balance: [
+        { value: '0', label: '순매수잔량' },
+        { value: '1', label: '순매도잔량' },
+        { value: '2', label: '매수비율' },
+        { value: '3', label: '매도비율' },
+    ],
+    fluctuation: [
+        { value: '0', label: '상승율' },
+        { value: '1', label: '하락율' },
+        { value: '2', label: '시가대비 상승율' },
+        { value: '3', label: '시가대비 하락율' },
+        { value: '4', label: '변동율' },
+    ],
+};
+
+// 탭별 현재 선택된 sort code
+const currentSort = {};
+
+function currentFile() {
+    const opts = SORT_OPTIONS[currentTab];
+    if (!opts) {
+        const files = {
+            cap:      `${DATA_SERVER}/ranking/symbols_marketcap.csv`,
+            vol:      `${DATA_SERVER}/ranking/symbols_vol.csv`,
+            dividend: `${DATA_SERVER}/ranking/symbols_dividend.csv`,
+        };
+        return files[currentTab];
+    }
+    const sc = currentSort[currentTab] ?? opts[0].value;
+    return `${DATA_SERVER}/ranking/symbols_${currentTab}_${sc}.csv`;
+}
+
+function updateSortBar() {
+    const opts = SORT_OPTIONS[currentTab];
+    const bar = document.getElementById('sort-bar');
+    const sel = document.getElementById('sort-select');
+    if (!opts) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    sel.innerHTML = opts.map(o =>
+        `<option value="${o.value}" ${(currentSort[currentTab] ?? opts[0].value) === o.value ? 'selected' : ''}>${o.label}</option>`
+    ).join('');
+}
+
+function onSortChange() {
+    currentSort[currentTab] = document.getElementById('sort-select').value;
+    sortKey = 'ranking'; sortAsc = true;
+    loadData();
+}
+
+async function fetchPrice(code) {
+    document.querySelectorAll('#price-' + code).forEach(el => el.textContent = '...');
+    try {
+        const r = await fetch(SERVER + '/price?code=' + code);
+        const j = await r.json();
+        const v = j.price ? fmtNum(j.price) : '-';
+        document.querySelectorAll('#price-' + code).forEach(el => el.textContent = v);
+    } catch {
+        document.querySelectorAll('#price-' + code).forEach(el => el.textContent = '-');
+    }
+}
+
+
+// ── 포맷 ─────────────────────────────────────────────
+const signCls = s => (['1','2'].includes(s) ? 'up' : ['4','5'].includes(s) ? 'down' : 'flat');
+const signPfx = s => (['1','2'].includes(s) ? '+' : ['4','5'].includes(s) ? '-' : '');
+const fmtNum  = n => Number(n).toLocaleString('ko-KR');
+const fmtCap  = n => { const v = Number(n); return v >= 10000 ? (v/10000).toFixed(1)+'조' : fmtNum(v)+'억'; };
+const fmtPct  = v => { const n = parseFloat(v); return isNaN(n) ? '-' : n.toFixed(2) + '%'; };
+const fmtDate = s => s && s.length === 8 ? s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6) : (s || '-');
+const pctCls  = v => parseFloat(v) >= 0 ? 'up' : 'down';
+
+// ── 토스트 ────────────────────────────────────────────
+function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ── 모달 ──────────────────────────────────────────────
+async function openModal(code, name) {
+    modalAction = { code, name };
+    document.getElementById('m-title').textContent = '매수 주문';
+    document.getElementById('m-info').innerHTML = `종목: <b>${name} (${code})</b>`;
+    const btn = document.getElementById('m-confirm');
+    btn.className = 'btn-buy';
+    btn.textContent = '매수 실행';
+    document.getElementById('m-qty').value = '';
+    document.getElementById('m-price').value = '';
+    document.getElementById('modal').classList.add('show');
+    setTimeout(() => document.getElementById('m-qty').focus(), 50);
+    try {
+        const [rp, rq] = await Promise.all([
+            fetch(SERVER + '/price?code='     + code),
+            fetch(SERVER + '/avail_buy?code=' + code),
+        ]);
+        const jp = await rp.json();
+        const jq = await rq.json();
+        if (jp.price)                document.getElementById('m-price').value = jp.price;
+        if (jq.avail_qty !== undefined) document.getElementById('m-qty').value   = jq.avail_qty;
+    } catch {}
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+    modalAction = null;
+}
+
+document.getElementById('m-confirm').onclick = async () => {
+    if (!modalAction) return;
+    const qty   = document.getElementById('m-qty').value.trim();
+    const price = document.getElementById('m-price').value.trim();
+    if (!qty || Number(qty) <= 0) { toast('수량을 입력하세요', 'err'); return; }
+    const { code, name } = modalAction;
+    const isLimit = price && Number(price) > 0;
+    const body = isLimit ? { code, qty, price } : { code, qty };
+    closeModal();
+    try {
+        const r = await fetch(SERVER + '/buy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const j = await r.json();
+        if (j.error)     toast(j.error, 'err');
+        else if (j.ok)   toast(`${name} ${fmtNum(qty)}주 매수${isLimit?'(지정가)':'(시장가)'} 완료 (${fmtNum(j.price)}원)`, 'ok');
+        else             toast(`주문 실패 (rt_cd: ${j.rt_cd})`, 'err');
+    } catch { toast('서버 연결 오류', 'err'); }
+};
+
+document.getElementById('modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── 탭 전환 ───────────────────────────────────────────
+function switchTab(tab) {
+    currentTab = tab;
+    sortKey = 'ranking'; sortAsc = true;
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', ['cap','vol','financial','dividend','profit_asset','quote_balance','fluctuation'][i] === tab);
+    });
+    updateSortBar();
+    loadData();
+}
+
+// ── CSV 로드 ──────────────────────────────────────────
+async function loadData() {
+    try {
+        const res   = await fetch(currentFile() + '?t=' + Date.now());
+        const text  = await res.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) return;
+
+        const headers = lines[0].split(',').map(h => h.trim());
+        rows = lines.slice(1).map(line => {
+            const c = line.split(',');
+            const row = {};
+            headers.forEach((h, i) => { row[h] = c[i]?.trim() ?? ''; });
+            return row;
+        }).filter(r => r.symbol);
+
+        render();
+    } catch(e) { console.error(e); }
+}
+
+// ── 정렬 ──────────────────────────────────────────────
+function sortedRows() {
+    return [...rows].sort((a, b) => {
+        const av = a[sortKey] ?? '', bv = b[sortKey] ?? '';
+        const an = parseFloat(av), bn = parseFloat(bv);
+        if (!isNaN(an) && !isNaN(bn)) return sortAsc ? an - bn : bn - an;
+        return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+}
+
+function sortBy(key) {
+    sortAsc = (sortKey === key) ? !sortAsc : (key === 'ranking');
+    sortKey = key;
+    render();
+}
+
+// ── 탭별 컬럼 정의 ────────────────────────────────────
+const COLS = {
+    cap: [
+        { label:'순위',     key:'ranking' },
+        { label:'종목명',   key:'kor_name' },
+        { label:'현재가',   key:'prpr' },
+        { label:'전일대비', key:'prdy_vrss' },
+        { label:'등락률',   key:'prdy_ctrt' },
+        { label:'거래량',   key:'vol' },
+        { label:'시가총액', key:'cap' },
+        { label:'시총비율', key:'cap_rate' },
+        { label:'주문',     key:null },
+    ],
+    vol: [
+        { label:'순위',       key:'ranking' },
+        { label:'종목명',     key:'kor_name' },
+        { label:'현재가',     key:'prpr' },
+        { label:'전일대비',   key:'prdy_vrss' },
+        { label:'등락률',     key:'prdy_ctrt' },
+        { label:'누적거래량', key:'vol' },
+        { label:'전일거래량', key:'prdy_vol' },
+        { label:'거래량증가율', key:'vol_inrt' },
+        { label:'거래대금',   key:'acml_tr_pbmn' },
+        { label:'주문',       key:null },
+    ],
+    financial: [
+        { label:'순위',         key:'ranking' },
+        { label:'종목명',       key:'kor_name' },
+        { label:'현재가',       key:'prpr' },
+        { label:'총자본순이익율', key:'cptl_ntin_rate' },
+        { label:'매출액순이익율', key:'sale_ntin_rate' },
+        { label:'자기자본비율', key:'bis' },
+        { label:'부채비율',     key:'lblt_rate' },
+        { label:'유보비율',     key:'rsrv_rate' },
+        { label:'매출증가율',   key:'grs' },
+        { label:'순이익증가율', key:'ntin_inrt' },
+        { label:'주문',         key:null },
+    ],
+    dividend: [
+        { label:'순위',     key:'ranking' },
+        { label:'종목명',   key:'kor_name' },
+        { label:'기준일',   key:'record_date' },
+        { label:'주당배당금', key:'per_sto_divi_amt' },
+        { label:'배당종류', key:'divi_kind' },
+        { label:'주문',     key:null },
+    ],
+    profit_asset: [
+        { label:'순위',     key:'ranking' },
+        { label:'종목명',   key:'kor_name' },
+        { label:'현재가',   key:'prpr' },
+        { label:'전일대비', key:'prdy_vrss' },
+        { label:'등락률',   key:'prdy_ctrt' },
+        { label:'매출총이익', key:'sale_totl_prfi' },
+        { label:'영업이익', key:'bsop_prti' },
+        { label:'경상이익', key:'op_prfi' },
+        { label:'당기순이익', key:'thtr_ntin' },
+        { label:'자산총계', key:'total_aset' },
+        { label:'부채총계', key:'total_lblt' },
+        { label:'자본총계', key:'total_cptl' },
+        { label:'주문',     key:null },
+    ],
+    quote_balance: [
+        { label:'순위',       key:'ranking' },
+        { label:'종목명',     key:'kor_name' },
+        { label:'현재가',     key:'prpr' },
+        { label:'전일대비',   key:'prdy_vrss' },
+        { label:'등락률',     key:'prdy_ctrt' },
+        { label:'총매도잔량', key:'total_askp_rsqn' },
+        { label:'총매수잔량', key:'total_bidp_rsqn' },
+        { label:'순매수잔량', key:'total_ntsl_bidp_rsqn' },
+        { label:'매수비율',   key:'shnu_rsqn_rate' },
+        { label:'매도비율',   key:'seln_rsqn_rate' },
+        { label:'주문',       key:null },
+    ],
+    fluctuation: [
+        { label:'순위',     key:'ranking' },
+        { label:'종목명',   key:'kor_name' },
+        { label:'현재가',   key:'prpr' },
+        { label:'전일대비', key:'prdy_vrss' },
+        { label:'등락률',   key:'prdy_ctrt' },
+        { label:'거래량',   key:'vol' },
+        { label:'최고가',   key:'stck_hgpr' },
+        { label:'최저가',   key:'stck_lwpr' },
+        { label:'기간등락률', key:'prd_rsfl_rate' },
+        { label:'주문',     key:null },
+    ],
+};
+
+// ── 렌더 ──────────────────────────────────────────────
+function render() {
+    renderHeader();
+    renderTable();
+    renderCards();
+}
+
+function renderHeader() {
+    const tr = document.querySelector('#thead tr');
+    tr.innerHTML = '';
+    COLS[currentTab].forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col.label;
+        if (col.key) {
+            th.onclick = () => sortBy(col.key);
+            th.classList.toggle('sorted', col.key === sortKey);
+        }
+        tr.appendChild(th);
+    });
+}
+
+function renderTable() {
+    const cols = COLS[currentTab];
+    document.querySelectorAll('#thead th').forEach((th, i) => {
+        if (cols[i]?.key) th.classList.toggle('sorted', cols[i].key === sortKey);
+    });
+
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+    sortedRows().forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = rowHtml(r);
+        tbody.appendChild(tr);
+    });
+}
+
+function nameCell(r) {
+    return `<td class="name-link" onclick="location.href='search.html?code=${r.symbol}'"><div class="name">${r.kor_name}</div><div class="code">${r.symbol}</div></td>`;
+}
+function priceCell(r) {
+    return `<td><a href="hoga.html?code=${r.symbol}" style="text-decoration:none"><span class="price-val" id="price-${r.symbol}">${fmtNum(r.prpr)}</span></a>&nbsp;<button class="btn-sm btn-ref" onclick="fetchPrice('${r.symbol}')">↻</button></td>`;
+}
+function changeCell(r) {
+    const cls = signCls(r.prdy_vrss_sign), pfx = signPfx(r.prdy_vrss_sign);
+    return `<td class="${cls}">${pfx}${fmtNum(Math.abs(Number(r.prdy_vrss)))}</td>`;
+}
+function orderCell(r) {
+    return `<td><button class="btn-sm btn-buy" onclick="openModal('${r.symbol}','${r.kor_name}')">매수</button></td>`;
+}
+
+function rowHtml(r) {
+    const rank = `<td class="rank">${r.ranking}</td>`;
+    switch (currentTab) {
+        case 'cap': return rank + nameCell(r) + priceCell(r) + changeCell(r) +
+            `<td class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</td>` +
+            `<td class="vol">${fmtNum(r.vol)}</td>` +
+            `<td class="cap">${fmtCap(r.cap)}</td>` +
+            `<td>${r.cap_rate}%</td>` +
+            orderCell(r);
+
+        case 'vol': return rank + nameCell(r) + priceCell(r) + changeCell(r) +
+            `<td class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</td>` +
+            `<td class="vol">${fmtNum(r.vol)}</td>` +
+            `<td class="vol">${fmtNum(r.prdy_vol)}</td>` +
+            `<td class="${pctCls(r.vol_inrt)}">${fmtPct(r.vol_inrt)}</td>` +
+            `<td class="cap">${fmtNum(r.acml_tr_pbmn)}</td>` +
+            orderCell(r);
+
+        case 'financial': return rank + nameCell(r) + priceCell(r) +
+            `<td class="fin">${fmtPct(r.cptl_ntin_rate)}</td>` +
+            `<td class="fin">${fmtPct(r.sale_ntin_rate)}</td>` +
+            `<td class="fin">${fmtPct(r.bis)}</td>` +
+            `<td class="fin">${fmtPct(r.lblt_rate)}</td>` +
+            `<td class="fin">${fmtPct(r.rsrv_rate)}</td>` +
+            `<td class="${pctCls(r.grs)}">${fmtPct(r.grs)}</td>` +
+            `<td class="${pctCls(r.ntin_inrt)}">${fmtPct(r.ntin_inrt)}</td>` +
+            orderCell(r);
+
+        case 'dividend': return rank + nameCell(r) +
+            `<td>${fmtDate(r.record_date)}</td>` +
+            `<td class="cap">${fmtNum(r.per_sto_divi_amt)}원</td>` +
+            `<td>${r.divi_kind}</td>` +
+            orderCell(r);
+
+        case 'profit_asset': return rank + nameCell(r) + priceCell(r) + changeCell(r) +
+            `<td class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</td>` +
+            `<td class="fin">${fmtNum(r.sale_totl_prfi)}</td>` +
+            `<td class="fin">${fmtNum(r.bsop_prti)}</td>` +
+            `<td class="fin">${fmtNum(r.op_prfi)}</td>` +
+            `<td class="fin">${fmtNum(r.thtr_ntin)}</td>` +
+            `<td class="fin">${fmtNum(r.total_aset)}</td>` +
+            `<td class="fin">${fmtNum(r.total_lblt)}</td>` +
+            `<td class="fin">${fmtNum(r.total_cptl)}</td>` +
+            orderCell(r);
+
+        case 'quote_balance': return rank + nameCell(r) + priceCell(r) + changeCell(r) +
+            `<td class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</td>` +
+            `<td class="vol">${fmtNum(r.total_askp_rsqn)}</td>` +
+            `<td class="vol">${fmtNum(r.total_bidp_rsqn)}</td>` +
+            `<td class="cap">${fmtNum(r.total_ntsl_bidp_rsqn)}</td>` +
+            `<td class="up">${fmtPct(r.shnu_rsqn_rate)}</td>` +
+            `<td class="down">${fmtPct(r.seln_rsqn_rate)}</td>` +
+            orderCell(r);
+
+        case 'fluctuation': return rank + nameCell(r) + priceCell(r) + changeCell(r) +
+            `<td class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</td>` +
+            `<td class="vol">${fmtNum(r.vol)}</td>` +
+            `<td>${fmtNum(r.stck_hgpr)}</td>` +
+            `<td>${fmtNum(r.stck_lwpr)}</td>` +
+            `<td class="${pctCls(r.prd_rsfl_rate)}">${fmtPct(r.prd_rsfl_rate)}</td>` +
+            orderCell(r);
+    }
+}
+
+function renderCards() {
+    const grid = document.getElementById('card-grid');
+    grid.innerHTML = '';
+    sortedRows().forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = cardHtml(r);
+        grid.appendChild(div);
+    });
+}
+
+function cardTop(r) {
+    return `<div class="card-top">
+        <div class="name-link" onclick="location.href='search.html?code=${r.symbol}'">
+            <div class="card-name">${r.kor_name}</div>
+            <div class="card-code">${r.symbol}</div>
+        </div>
+        <span class="card-rank">#${r.ranking}</span>
+    </div>`;
+}
+function cardPriceRow(r) {
+    const cls = signCls(r.prdy_vrss_sign), pfx = signPfx(r.prdy_vrss_sign);
+    return `<div class="card-price-row">
+        <a href="hoga.html?code=${r.symbol}" style="text-decoration:none"><span class="card-price" id="price-${r.symbol}">${fmtNum(r.prpr)}</span></a>
+        <button class="btn-sm btn-ref" onclick="fetchPrice('${r.symbol}')">↻</button>
+        <span class="card-change ${cls}">${pfx}${fmtNum(Math.abs(Number(r.prdy_vrss)))}</span>
+    </div>`;
+}
+function cardOrderBtn(r) {
+    return `<div class="card-btns"><button class="btn-buy" onclick="openModal('${r.symbol}','${r.kor_name}')">매수</button></div>`;
+}
+
+function cardHtml(r) {
+    switch (currentTab) {
+        case 'cap': return cardTop(r) + cardPriceRow(r) +
+            `<div class="card-meta">
+                <span><b>등락률</b> <span class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</span></span>
+                <span><b>거래량</b> ${fmtNum(r.vol)}</span>
+                <span><b>시총</b> ${fmtCap(r.cap)}</span>
+                <span><b>비율</b> ${r.cap_rate}%</span>
+            </div>` + cardOrderBtn(r);
+
+        case 'vol': return cardTop(r) + cardPriceRow(r) +
+            `<div class="card-meta">
+                <span><b>등락률</b> <span class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</span></span>
+                <span><b>누적거래량</b> ${fmtNum(r.vol)}</span>
+                <span><b>전일거래량</b> ${fmtNum(r.prdy_vol)}</span>
+                <span><b>증가율</b> <span class="${pctCls(r.vol_inrt)}">${fmtPct(r.vol_inrt)}</span></span>
+                <span><b>거래대금</b> ${fmtNum(r.acml_tr_pbmn)}</span>
+            </div>` + cardOrderBtn(r);
+
+        case 'financial': return cardTop(r) + cardPriceRow(r) +
+            `<div class="card-meta">
+                <span><b>총자본순이익</b> ${fmtPct(r.cptl_ntin_rate)}</span>
+                <span><b>매출순이익</b> ${fmtPct(r.sale_ntin_rate)}</span>
+                <span><b>자기자본비율</b> ${fmtPct(r.bis)}</span>
+                <span><b>부채비율</b> ${fmtPct(r.lblt_rate)}</span>
+                <span><b>유보비율</b> ${fmtPct(r.rsrv_rate)}</span>
+                <span><b>매출증가율</b> <span class="${pctCls(r.grs)}">${fmtPct(r.grs)}</span></span>
+                <span><b>순이익증가율</b> <span class="${pctCls(r.ntin_inrt)}">${fmtPct(r.ntin_inrt)}</span></span>
+            </div>` + cardOrderBtn(r);
+
+        case 'dividend': return cardTop(r) +
+            `<div class="card-meta" style="margin-top:4px;margin-bottom:12px">
+                <span><b>기준일</b> ${fmtDate(r.record_date)}</span>
+                <span><b>배당금</b> <span class="cap">${fmtNum(r.per_sto_divi_amt)}원</span></span>
+                <span><b>종류</b> ${r.divi_kind}</span>
+            </div>` + cardOrderBtn(r);
+
+        case 'profit_asset': return cardTop(r) + cardPriceRow(r) +
+            `<div class="card-meta">
+                <span><b>등락률</b> <span class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</span></span>
+                <span><b>매출총이익</b> <span class="fin">${fmtNum(r.sale_totl_prfi)}</span></span>
+                <span><b>영업이익</b> <span class="fin">${fmtNum(r.bsop_prti)}</span></span>
+                <span><b>당기순이익</b> <span class="fin">${fmtNum(r.thtr_ntin)}</span></span>
+                <span><b>자산총계</b> <span class="fin">${fmtNum(r.total_aset)}</span></span>
+                <span><b>자본총계</b> <span class="fin">${fmtNum(r.total_cptl)}</span></span>
+            </div>` + cardOrderBtn(r);
+
+        case 'quote_balance': return cardTop(r) + cardPriceRow(r) +
+            `<div class="card-meta">
+                <span><b>등락률</b> <span class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</span></span>
+                <span><b>총매수잔량</b> ${fmtNum(r.total_bidp_rsqn)}</span>
+                <span><b>총매도잔량</b> ${fmtNum(r.total_askp_rsqn)}</span>
+                <span><b>순매수잔량</b> <span class="cap">${fmtNum(r.total_ntsl_bidp_rsqn)}</span></span>
+                <span><b>매수비율</b> <span class="up">${fmtPct(r.shnu_rsqn_rate)}</span></span>
+                <span><b>매도비율</b> <span class="down">${fmtPct(r.seln_rsqn_rate)}</span></span>
+            </div>` + cardOrderBtn(r);
+
+        case 'fluctuation': return cardTop(r) + cardPriceRow(r) +
+            `<div class="card-meta">
+                <span><b>등락률</b> <span class="${pctCls(r.prdy_ctrt)}">${fmtPct(r.prdy_ctrt)}</span></span>
+                <span><b>거래량</b> ${fmtNum(r.vol)}</span>
+                <span><b>최고가</b> ${fmtNum(r.stck_hgpr)}</span>
+                <span><b>최저가</b> ${fmtNum(r.stck_lwpr)}</span>
+                <span><b>기간등락률</b> <span class="${pctCls(r.prd_rsfl_rate)}">${fmtPct(r.prd_rsfl_rate)}</span></span>
+            </div>` + cardOrderBtn(r);
+    }
+}
+
+// ── 초기화 ────────────────────────────────────────────
+updateSortBar();
+loadData();
+</script>
+</body>
+</html>
