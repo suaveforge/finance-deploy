@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta name="description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<link rel="canonical" href="https://finance.suaveforge.com/hoga.html">
+<meta property="og:title" content="호가 · SuaveForge FINANCE">
+<meta property="og:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta property="og:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<meta property="og:url" content="https://finance.suaveforge.com/hoga.html">
+<meta property="og:site_name" content="SuaveForge FINANCE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="호가 · SuaveForge FINANCE">
+<meta name="twitter:description" content="통합 증권사 연결, 시세, 잔고, 주문과 리스크 관리를 위한 SuaveForge FINANCE 운영 콘솔.">
+<meta name="twitter:image" content="https://sitehub.suaveforge.com/assets/namecard-default.png">
+<script async src="https://sitehub.suaveforge.com/analytics-loader.js" data-sitehub-project="p07"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>호가</title>
+<script src="auth.js"></script>
+<script src="nav.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; padding: 20px; }
+h1 { color: #fff; font-size: 22px; margin-bottom: 14px; }
+
+.toolbar {
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap; margin-bottom: 18px;
+}
+
+/* 검색 */
+.search-wrap { position: relative; width: 260px; }
+.search-wrap input[type="text"] {
+    width: 100%; background: #1a1a2e; color: #e0e0e0;
+    border: 1px solid #444; padding: 8px 12px;
+    border-radius: 6px; font-size: 14px;
+}
+.search-wrap input:focus { outline: none; border-color: #7eb8f7; }
+.search-dropdown {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: #1a1a2e; border: 1px solid #444;
+    border-radius: 6px; z-index: 50;
+    max-height: 280px; overflow-y: auto;
+}
+.search-dropdown.open { display: block; }
+.search-item {
+    padding: 9px 12px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px; font-size: 13px;
+}
+.search-item:hover { background: #2a2a4e; }
+.search-item .s-name { color: #fff; font-weight: bold; }
+.search-item .s-code { color: #666; font-size: 12px; white-space: nowrap; }
+.search-empty { padding: 12px; color: #555; font-size: 13px; text-align: center; }
+
+button {
+    background: #2a2a3e; color: #ccc;
+    border: 1px solid #444; padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; font-size: 13px;
+    touch-action: manipulation;
+}
+button:hover { background: #3a3a5e; color: #fff; }
+
+/* 종목 헤더 정보 */
+.stock-header {
+    background: #1a1a2e; border-radius: 10px;
+    padding: 16px 20px; margin-bottom: 14px;
+    display: none;
+}
+.stock-name { font-size: 18px; font-weight: bold; color: #fff; }
+.stock-code { font-size: 13px; color: #666; margin-left: 8px; }
+.stock-price { font-size: 28px; font-weight: bold; margin-top: 6px; }
+.stock-meta {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    margin-top: 8px; font-size: 13px; color: #888;
+}
+.stock-meta span b { color: #ccc; }
+
+/* 호가 테이블 */
+.hoga-wrap {
+    background: #1a1a2e; border-radius: 10px;
+    padding: 16px; display: none;
+}
+.hoga-title {
+    font-size: 14px; color: #888; margin-bottom: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.hoga-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.hoga-table th {
+    color: #666; font-weight: normal;
+    padding: 4px 8px; text-align: right; font-size: 12px;
+}
+.hoga-table th:first-child { text-align: left; }
+.hoga-table td {
+    padding: 5px 8px; text-align: right;
+    border-bottom: 1px solid #111;
+}
+.hoga-table td:first-child { text-align: right; }
+
+/* 매도 행 */
+.row-ask td { color: #5599ff; }
+
+/* 매수 행 */
+.row-bid td { color: #ff6655; }
+
+/* 잔량 바 공통 */
+.bar-wrap {
+    position: relative; height: 22px;
+    border-radius: 2px; overflow: hidden;
+}
+.bar-fill {
+    position: absolute; top: 0; bottom: 0;
+    border-radius: 2px;
+}
+.bar-wrap.bar-ask .bar-fill { right: 0; background: #1e2f5a; }
+.bar-wrap.bar-bid .bar-fill { left: 0;  background: #4a1a1a; }
+.bar-label {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center;
+    font-size: 12px; color: #888;
+}
+.bar-wrap.bar-ask .bar-label { justify-content: flex-end; padding-right: 5px; }
+.bar-wrap.bar-bid .bar-label { justify-content: flex-start; padding-left: 5px; }
+
+/* 현재가 구분행 */
+.row-sep td {
+    background: #111; color: #888; font-size: 11px;
+    text-align: center; padding: 3px;
+}
+
+/* 합계 행 */
+.row-total td { color: #aaa; font-size: 12px; border-top: 1px solid #333; padding-top: 8px; }
+
+/* 순매수 바 */
+.ntby-bar-wrap {
+    margin-top: 14px; padding: 10px 0; border-top: 1px solid #2a2a3e;
+}
+.ntby-label { font-size: 12px; color: #666; margin-bottom: 6px; }
+.ntby-track {
+    height: 8px; background: #1e1e30; border-radius: 4px; overflow: hidden;
+}
+.ntby-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+
+/* 빈 상태 */
+.empty-msg {
+    padding: 60px 20px; text-align: center;
+    color: #444; font-size: 15px;
+    background: #1a1a2e; border-radius: 10px;
+}
+
+/* 자동갱신 표시 */
+.refresh-badge {
+    font-size: 11px; color: #555; display: flex; align-items: center; gap: 5px;
+}
+.refresh-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #444; display: inline-block;
+}
+.refresh-dot.live { background: #44cc44; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* 투자자 섹션 */
+.investor-wrap {
+    background: #1a1a2e; border-radius: 10px;
+    padding: 14px 16px; margin-top: 12px; display: none;
+}
+.investor-title {
+    font-size: 13px; color: #666; margin-bottom: 10px;
+    display: flex; justify-content: space-between;
+}
+.investor-title span { font-size: 11px; color: #444; }
+.investor-rows { display: flex; flex-direction: column; gap: 8px; }
+.investor-row { display: flex; align-items: center; gap: 8px; }
+.investor-label { font-size: 12px; color: #666; width: 44px; flex-shrink: 0; text-align: right; }
+.investor-bar-wrap {
+    flex: 1; position: relative; height: 20px;
+    background: #0f0f1a; border-radius: 3px; overflow: hidden;
+}
+.investor-bar-fill {
+    position: absolute; top: 0; bottom: 0; border-radius: 3px;
+    transition: width 0.3s;
+}
+.investor-bar-label {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; font-size: 11px; color: #888;
+}
+.investor-val { font-size: 12px; width: 80px; flex-shrink: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 600px) {
+    body { padding: 12px; }
+    .search-wrap { width: 100%; }
+    .stock-price { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<h1>호가</h1>
+
+<div class="toolbar">
+    <div class="search-wrap">
+        <input type="text" id="search-input" placeholder="종목명 또는 코드 입력"
+               autocomplete="off" oninput="onSearchInput()" onkeydown="onSearchKey(event)">
+        <div class="search-dropdown" id="search-dropdown"></div>
+    </div>
+    <button onclick="toggleAuto()" id="btn-auto">자동갱신 OFF</button>
+</div>
+
+<!-- 종목 정보 헤더 -->
+<div class="stock-header" id="stock-header">
+    <div>
+        <span class="stock-name" id="s-name">-</span>
+        <span class="stock-code" id="s-code"></span>
+    </div>
+    <div class="stock-price" id="s-price">-</div>
+    <div class="stock-meta">
+        <span>시가 <b id="s-open">-</b></span>
+        <span>고가 <b id="s-high">-</b></span>
+        <span>저가 <b id="s-low">-</b></span>
+        <span>기준가 <b id="s-sdpr">-</b></span>
+        <span>예상체결가 <b id="s-antc">-</b></span>
+        <span>갱신 <b id="s-time">-</b></span>
+    </div>
+</div>
+
+<!-- 호가 영역 -->
+<div class="hoga-wrap" id="hoga-wrap">
+    <div class="hoga-title">
+        <span>호가 (매도 ↑ / 매수 ↓)</span>
+        <div class="refresh-badge">
+            <div class="refresh-dot" id="refresh-dot"></div>
+            <span id="refresh-label">대기중</span>
+        </div>
+    </div>
+    <table class="hoga-table">
+        <thead>
+            <tr>
+                <th style="width:36%">잔량</th>
+                <th style="width:28%">가격</th>
+                <th style="width:36%; text-align:left">잔량</th>
+            </tr>
+        </thead>
+        <tbody id="hoga-body"></tbody>
+    </table>
+    <div class="ntby-bar-wrap">
+        <div class="ntby-label">순매수 호가잔량: <span id="ntby-val">-</span></div>
+        <div class="ntby-track"><div class="ntby-fill" id="ntby-fill"></div></div>
+    </div>
+</div>
+
+<!-- 투자자 순매수 -->
+<div class="investor-wrap" id="investor-wrap">
+    <div class="investor-title">
+        <span style="color:#888">투자자별 순매수</span>
+        <span id="investor-date"></span>
+    </div>
+    <div class="investor-rows" id="investor-rows"></div>
+</div>
+
+<div class="empty-msg" id="empty-msg">종목명이나 코드를 입력하고 선택하세요</div>
+
+<script>
+const SERVER = localStorage.getItem('trade_server') || 'https://api-finance.suaveforge.com:18465/api';
+const DEFAULT_AUTO_REFRESH = false;
+
+let currentCode = '';
+let currentName = '';
+let autoTimer   = null;
+let isAuto      = DEFAULT_AUTO_REFRESH;
+let dropItems   = [];
+let dropIndex   = -1;
+let searchTimer = null;
+
+// ── 검색 ────────────────────────────────────────────────
+function onSearchInput() {
+    clearTimeout(searchTimer);
+    const q = document.getElementById('search-input').value.trim();
+    if (q.length < 1) { closeDropdown(); return; }
+    searchTimer = setTimeout(() => fetchSearch(q), 200);
+}
+
+async function fetchSearch(q) {
+    try {
+        const res  = await fetch(`${SERVER}/search?q=${encodeURIComponent(q)}`);
+        const list = await res.json();
+        renderDropdown(list);
+    } catch { closeDropdown(); }
+}
+
+function renderDropdown(list) {
+    const dd = document.getElementById('search-dropdown');
+    dropItems = list;
+    dropIndex = -1;
+    if (!list || list.length === 0) {
+        dd.innerHTML = '<div class="search-empty">검색 결과 없음</div>';
+        dd.classList.add('open');
+        return;
+    }
+    dd.innerHTML = list.map((item, i) =>
+        `<div class="search-item" data-i="${i}"
+              onmousedown="selectItem(${i})"
+              onmouseover="highlightItem(${i})">
+            <span class="s-name">${item.name}</span>
+            <span class="s-code">${item.code}</span>
+        </div>`
+    ).join('');
+    dd.classList.add('open');
+}
+
+function highlightItem(i) {
+    dropIndex = i;
+    document.querySelectorAll('.search-item').forEach((el, j) => {
+        el.style.background = j === i ? '#2a2a4e' : '';
+    });
+}
+
+function onSearchKey(e) {
+    const dd = document.getElementById('search-dropdown');
+    if (!dd.classList.contains('open')) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); highlightItem(Math.min(dropIndex + 1, dropItems.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlightItem(Math.max(dropIndex - 1, 0)); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (dropIndex >= 0) selectItem(dropIndex); }
+    else if (e.key === 'Escape') closeDropdown();
+}
+
+function selectItem(i) {
+    const item = dropItems[i];
+    if (!item) return;
+    closeDropdown();
+    document.getElementById('search-input').value = item.name;
+    loadHoga(item.code, item.name);
+}
+
+function closeDropdown() {
+    document.getElementById('search-dropdown').classList.remove('open');
+    dropItems = []; dropIndex = -1;
+}
+
+document.addEventListener('click', e => {
+    if (!document.querySelector('.search-wrap').contains(e.target)) closeDropdown();
+});
+
+// ── 자동갱신 ─────────────────────────────────────────────
+function toggleAuto() {
+    isAuto = !isAuto;
+    const btn = document.getElementById('btn-auto');
+    btn.textContent = isAuto ? '자동갱신 ON' : '자동갱신 OFF';
+    btn.style.color = isAuto ? '#7eb8f7' : '';
+    btn.style.borderColor = isAuto ? '#7eb8f7' : '';
+    if (isAuto && currentCode) startAutoRefresh();
+    else stopAutoRefresh();
+}
+
+function startAutoRefresh() {
+    stopAutoRefresh();
+    autoTimer = setInterval(() => { if (currentCode) loadHoga(currentCode, currentName, true); }, 5000);
+}
+
+function stopAutoRefresh() {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+}
+
+// ── 호가 로드 ────────────────────────────────────────────
+async function loadHoga(code, name, silent = false) {
+    if (!silent) {
+        currentCode = code;
+        currentName = name;
+        document.getElementById('s-name').textContent = name;
+        document.getElementById('s-code').textContent = code;
+        document.getElementById('empty-msg').style.display      = 'none';
+        document.getElementById('stock-header').style.display   = 'block';
+        document.getElementById('hoga-wrap').style.display      = 'block';
+        document.getElementById('investor-wrap').style.display  = 'block';
+        if (isAuto) startAutoRefresh();
+        loadInvestor(code); // 투자자 데이터는 처음 조회 시 1회 (장중 변화 느림)
+    }
+
+    const dot   = document.getElementById('refresh-dot');
+    const label = document.getElementById('refresh-label');
+    dot.className = 'refresh-dot live';
+    label.textContent = '갱신중...';
+
+    try {
+        const res  = await fetch(`${SERVER}/hoga?code=${code}`);
+        const json = await res.json();
+        if (json.rt_cd !== '0') {
+            label.textContent = '오류: ' + (json.msg1 || json.rt_cd);
+            dot.className = 'refresh-dot';
+            return;
+        }
+        renderHoga(json);
+        const now = new Date();
+        const hm  = now.getHours().toString().padStart(2,'0') + ':' +
+                    now.getMinutes().toString().padStart(2,'0') + ':' +
+                    now.getSeconds().toString().padStart(2,'0');
+        label.textContent = hm + ' 갱신';
+        dot.className = 'refresh-dot';
+    } catch (err) {
+        label.textContent = '연결 오류';
+        dot.className = 'refresh-dot';
+    }
+}
+
+// ── 투자자 순매수 로드 ───────────────────────────────────
+async function loadInvestor(code) {
+    try {
+        const res  = await fetch(`${SERVER}/investor?code=${code}`);
+        const json = await res.json();
+        if (json.rt_cd !== '0' || !json.output || !json.output.length) return;
+        renderInvestor(json.output[0]); // 가장 최근 날짜
+    } catch {}
+}
+
+function renderInvestor(d) {
+    // 날짜 표시
+    const dt = d.stck_bsop_date || '';
+    if (dt.length === 8)
+        document.getElementById('investor-date').textContent =
+            dt.slice(0,4) + '-' + dt.slice(4,6) + '-' + dt.slice(6,8) + ' 기준';
+
+    const rows = [
+        { label: '외국인', qty: d.frgn_ntby_qty, pbmn: d.frgn_ntby_tr_pbmn },
+        { label: '기관',   qty: d.orgn_ntby_qty,  pbmn: d.orgn_ntby_tr_pbmn },
+        { label: '개인',   qty: d.prsn_ntby_qty,  pbmn: d.prsn_ntby_tr_pbmn },
+    ];
+
+    // 최대 절대값 (바 너비 기준)
+    const maxAbs = Math.max(1, ...rows.map(r => Math.abs(parseInt(r.qty || 0, 10))));
+
+    document.getElementById('investor-rows').innerHTML = rows.map(r => {
+        const qty   = parseInt(r.qty  || 0, 10);
+        const pbmn  = parseInt(r.pbmn || 0, 10);
+        const pct   = (Math.abs(qty) / maxAbs * 100).toFixed(1);
+        const isBuy = qty >= 0;
+        const color = isBuy ? '#cc3333' : '#3355cc';
+        const align = isBuy ? 'left' : 'right';
+        const pfx   = isBuy ? '+' : '';
+        const pbmn_str = (isBuy ? '+' : '') + (pbmn / 100).toFixed(0) + '백만';
+
+        return `<div class="investor-row">
+            <div class="investor-label">${r.label}</div>
+            <div class="investor-bar-wrap">
+                <div class="investor-bar-fill"
+                     style="width:${pct}%;background:${color};${isBuy ? 'left:0' : 'right:0'}"></div>
+                <div class="investor-bar-label" style="justify-content:${isBuy ? 'flex-start' : 'flex-end'};padding:0 5px">
+                    <span style="color:${color}">${pfx}${qty.toLocaleString('ko-KR')}주</span>
+                </div>
+            </div>
+            <div class="investor-val" style="color:${color}">${pbmn_str}</div>
+        </div>`;
+    }).join('');
+}
+
+function fmt(v) {
+    const n = parseInt(v, 10);
+    if (isNaN(n)) return '-';
+    return n.toLocaleString('ko-KR');
+}
+
+function fmtPrice(v, sign, base) {
+    const n = parseInt(v, 10);
+    const b = parseInt(base, 10);
+    if (isNaN(n)) return { text: '-', cls: '' };
+    const cls = n > b ? 'color:#ff6655' : n < b ? 'color:#5599ff' : '';
+    return { text: n.toLocaleString('ko-KR'), cls };
+}
+
+function renderHoga(json) {
+    const o1 = json.output1;
+    const o2 = json.output2;
+
+    // 현재가 / 종목 정보
+    const sdpr = parseInt(o2.stck_sdpr, 10) || 0;
+    const prpr = parseInt(o2.stck_prpr, 10) || 0;
+    const vrss = prpr - sdpr;
+    const ctrt = sdpr > 0 ? (vrss / sdpr * 100) : 0;
+    const isUp   = vrss > 0;
+    const isDown = vrss < 0;
+    const priceColor = isUp ? '#ff6655' : isDown ? '#5599ff' : '#e0e0e0';
+    const pfx = isUp ? '+' : isDown ? '-' : '';
+
+    document.getElementById('s-price').style.color = priceColor;
+    document.getElementById('s-price').textContent =
+        prpr.toLocaleString('ko-KR') + '  ' + pfx + Math.abs(vrss).toLocaleString('ko-KR') +
+        ' (' + pfx + Math.abs(ctrt).toFixed(2) + '%)';
+
+    document.getElementById('s-open').textContent  = fmt(o2.stck_oprc);
+    document.getElementById('s-high').textContent  = fmt(o2.stck_hgpr);
+    document.getElementById('s-low').textContent   = fmt(o2.stck_lwpr);
+    document.getElementById('s-sdpr').textContent  = fmt(o2.stck_sdpr);
+    document.getElementById('s-antc').textContent  = fmt(o2.antc_cnpr);
+
+    const hour = o1.aspr_acpt_hour || '';
+    if (hour.length >= 4)
+        document.getElementById('s-time').textContent =
+            hour.slice(0,2) + ':' + hour.slice(2,4) + (hour.length >= 6 ? ':' + hour.slice(4,6) : '');
+
+    // 호가 테이블
+    // 최대 잔량 계산 (bar 너비 기준)
+    let maxQ = 1;
+    for (let i = 1; i <= 10; i++) {
+        maxQ = Math.max(maxQ, parseInt(o1['askp_rsqn'+i]||0,10), parseInt(o1['bidp_rsqn'+i]||0,10));
+    }
+
+    let rows = '';
+
+    // 매도 10 → 1 순 (위에서 아래로 높은가격 → 낮은가격)
+    for (let i = 10; i >= 1; i--) {
+        const price = parseInt(o1['askp'+i]||0,10);
+        const qty   = parseInt(o1['askp_rsqn'+i]||0,10);
+        const barPct = (qty / maxQ * 100).toFixed(1);
+        const pStyle = price > sdpr ? 'color:#ff6655' : price < sdpr ? 'color:#5599ff' : '';
+        rows +=
+            `<tr class="row-ask">
+                <td>
+                    <div class="bar-wrap bar-ask">
+                        <div class="bar-fill" style="width:${barPct}%"></div>
+                        <div class="bar-label">${fmt(qty)}</div>
+                    </div>
+                </td>
+                <td style="${pStyle}">${fmt(price)}</td>
+                <td></td>
+            </tr>`;
+    }
+
+    // 구분선: 현재가
+    rows +=
+        `<tr class="row-sep">
+            <td colspan="3">▲ 매도 &nbsp;|&nbsp; 현재가 ${prpr.toLocaleString('ko-KR')} &nbsp;|&nbsp; 매수 ▼</td>
+        </tr>`;
+
+    // 매수 1 → 10 순 (위에서 아래로 높은가격 → 낮은가격)
+    for (let i = 1; i <= 10; i++) {
+        const price = parseInt(o1['bidp'+i]||0,10);
+        const qty   = parseInt(o1['bidp_rsqn'+i]||0,10);
+        const barPct = (qty / maxQ * 100).toFixed(1);
+        const pStyle = price > sdpr ? 'color:#ff6655' : price < sdpr ? 'color:#5599ff' : '';
+        rows +=
+            `<tr class="row-bid">
+                <td></td>
+                <td style="${pStyle}">${fmt(price)}</td>
+                <td>
+                    <div class="bar-wrap bar-bid">
+                        <div class="bar-fill" style="width:${barPct}%"></div>
+                        <div class="bar-label">${fmt(qty)}</div>
+                    </div>
+                </td>
+            </tr>`;
+    }
+
+    // 합계 행
+    const totalAsk = parseInt(o1.total_askp_rsqn||0,10);
+    const totalBid = parseInt(o1.total_bidp_rsqn||0,10);
+    rows +=
+        `<tr class="row-total">
+            <td>${totalAsk.toLocaleString('ko-KR')}</td>
+            <td style="text-align:center;color:#666">합계</td>
+            <td>${totalBid.toLocaleString('ko-KR')}</td>
+        </tr>`;
+
+    document.getElementById('hoga-body').innerHTML = rows;
+
+    // 순매수 바
+    const ntby = parseInt(o1.ntby_aspr_rsqn||0,10);
+    document.getElementById('ntby-val').textContent =
+        (ntby >= 0 ? '+' : '') + ntby.toLocaleString('ko-KR');
+    const ratio = Math.min(1, Math.abs(ntby) / Math.max(1, totalAsk, totalBid));
+    const fill  = document.getElementById('ntby-fill');
+    fill.style.width      = (ratio * 100).toFixed(1) + '%';
+    fill.style.background = ntby >= 0 ? '#cc3333' : '#3355cc';
+    fill.style.float      = ntby >= 0 ? 'right' : 'left';
+    document.getElementById('ntby-fill').parentElement.style.direction = ntby >= 0 ? 'rtl' : 'ltr';
+}
+
+// ── URL 파라미터 처리 ────────────────────────────────────
+const urlCode = new URLSearchParams(location.search).get('code');
+if (urlCode) {
+    fetch(`${SERVER}/search?q=${encodeURIComponent(urlCode)}`)
+        .then(r => r.json())
+        .then(list => {
+            const item = list.find(i => i.code === urlCode) || list[0];
+            if (item) {
+                document.getElementById('search-input').value = item.name;
+                loadHoga(item.code, item.name);
+            }
+        })
+        .catch(() => {});
+}
+</script>
+</body>
+</html>
